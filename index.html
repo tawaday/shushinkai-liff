@@ -207,7 +207,13 @@
         <div class="label">IDトークン</div>
         <div id="tokenState" class="value tokenResult">－</div>
       </div>
-
+      <button
+        type="button"
+        class="button"
+        onclick="sendTokenToGas()">
+      GAS認証テスト
+      </button>
+      
       <button
         type="button"
         class="button"
@@ -339,6 +345,25 @@
 
     function reloadPage() {
       window.location.reload();
+    }
+    async function sendTokenToGas(){
+      const idToken=liff.getIDToken();
+      const response=await fetch(
+        "https://script.google.com/macros/s/AKfycbyYfVwfTY6p-2O0jBhWEeUVGLYtihMuSB0EdmO1bIByEK_hgh0fSb4IDBkJ151SElc/exec",
+        {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json"
+          },
+          body:JSON.stringify({
+            idToken:idToken
+          })
+        }
+      );
+    
+      const result=await response.json();
+      console.log(result);
+      alert(JSON.stringify(result,null,2));
     }
   </script>
 </body>
