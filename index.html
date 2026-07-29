@@ -216,7 +216,6 @@
         id="gasAuthButton"
         type="button"
         class="button"
-        onclick="sendTokenToGas()">
         GAS認証テスト
       </button>
       
@@ -236,10 +235,19 @@
     const GAS_API_URL = 
       "https://script.google.com/macros/s/AKfycbyYfVwfTY6p-2O0jBhWEeUVGLYtihMuSB0EdmO1bIByEK_hgh0fSb4IDBkJ151SElc/exec"
     
-    document.addEventListener(
-      "DOMContentLoaded",
-      initializeLiff
-    );
+    document.addEventListener("DOMContentLoaded", function () {
+      const gasAuthButton =
+        document.getElementById("gasAuthButton");
+    
+      if (gasAuthButton) {
+        gasAuthButton.addEventListener(
+          "click",
+          sendTokenToGas
+        );
+      }
+    
+      initializeLiff();
+    });
 
     async function initializeLiff() {
       const status = document.getElementById("status");
