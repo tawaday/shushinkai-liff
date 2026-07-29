@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <title>宗心会 LIFF検証</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        "Yu Gothic",
+        sans-serif;
+      background: #f5f0f1;
+      color: #4b111b;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 520px;
+      padding: 42px 28px;
+      text-align: center;
+      background: #ffffff;
+      border-radius: 22px;
+      box-shadow: 0 14px 40px rgba(60, 20, 30, 0.12);
+    }
+
+    .mark {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: #5a101d;
+      color: #d8b45a;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 26px;
+    }
+
+    p {
+      margin: 8px 0;
+      line-height: 1.7;
+      color: #666;
+    }
+
+    .status {
+      margin-top: 24px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #f8f3f4;
+      font-weight: 700;
+      color: #5a101d;
+    }
+
+    .url {
+      margin-top: 18px;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+      color: #999;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <div class="mark">宗心会</div>
+
+    <h1>GitHub Pages 動作確認</h1>
+
+    <p>
+      宗心会LIFF認証ページの<br>
+      公開テストです。
+    </p>
+
+    <div class="status">
+      index.html の読み込みに成功しました
+    </div>
+
+    <div id="pageUrl" class="url"></div>
+  </main>
+
+  <script>
+    document.getElementById("pageUrl").textContent =
+      window.location.href;
+  </script>
+</body>
+</html>
