@@ -207,11 +207,17 @@
         <div class="label">IDトークン</div>
         <div id="tokenState" class="value tokenResult">－</div>
       </div>
+
+      <div id="gasAuthResult" class="status">
+        GAS認証はまだ実行していません
+      </div>
+      
       <button
+        id="gasAuthButton"
         type="button"
         class="button"
         onclick="sendTokenToGas()">
-      GAS認証テスト
+        GAS認証テスト
       </button>
       
       <button
@@ -335,6 +341,114 @@
       }
     }
 
+    async function sendTokenToGas() {
+      const button =
+        document.getElementById("gasAuthButton");
+    
+      try {
+        if (button) {
+          button.disabled = true;
+          button.textContent = "GASで認証しています…";
+        }
+    
+        const idToken = liff.getIDToken();
+    
+        if (!idToken) {
+          throw new Error(
+            "IDトークンを取得できませんでした。"
+          );
+        }
+    
+        writeDebug_("GAS認証APIへ送信開始");
+    
+        /*
+         * URLSearchParamsを使用して、
+         * application/x-www-form-urlencoded形式で送信。
+         * 不要なCORSプリフライトを発生させません。
+         */
+        const body = new URLSearchParams({
+          action: "authenticate",
+          idToken: idToken
+        });
+    
+        const response = await fetch(
+          GAS_API_URL,
+          {
+            method: "POST",
+            body: body,
+            redirect: "follow"
+          }
+        );
+    
+        if (!response.ok) {
+          throw new Error(
+            "GAS通信エラー: HTTP " +
+            response.status
+          );
+        }
+    
+        const result = await response.json();
+    
+        writeDebug_(
+          "GAS応答\n" +
+          JSON.stringify(result, null, 2)
+        );
+    
+        if (!result.ok) {
+          throw new Error(
+            result.error || "GAS認証に失敗しました。"
+          );
+        }
+    
+        document.getElementById(
+          "gasAuthResult"
+        ).innerHTML =
+          "<strong>GAS認証成功</strong><br>" +
+          "会員ID：" +
+          escapeHtml_(result.memberId) +
+          "<br>" +
+          "表示名：" +
+          escapeHtml_(result.displayName || "―");
+    
+      } catch (error) {
+        console.error(error);
+    
+        writeDebug_(
+          "GAS認証ERROR\n" +
+          (
+            error && error.message
+              ? error.message
+              : String(error)
+          )
+        );
+    
+        document.getElementById(
+          "gasAuthResult"
+        ).textContent =
+          "GAS認証失敗：" +
+          (
+            error && error.message
+              ? error.message
+              : String(error)
+          );
+    
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = "GAS認証テスト";
+        }
+      }
+    }
+
+    function escapeHtml_(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+    
     function writeDebug_(message) {
       const debug = document.getElementById("debug");
 
