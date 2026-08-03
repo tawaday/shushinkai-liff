@@ -27,6 +27,7 @@
   let currentElection = null;
   let currentOptions = [];
   let currentConfidenceCandidate = null;
+  let currentWithdrawnCandidates = [];
   let selectedOptionId = "";
   let currentIdToken = "";
   let isAuthenticating = false;
@@ -134,6 +135,7 @@
 
     currentConfidenceCandidate =
       data.confidenceCandidate || null;
+    currentWithdrawnCandidates = data.withdrawnCandidates || [];
 
     selectedOptionId = "";
 
@@ -304,6 +306,7 @@
       startAt,
       endAt
     );
+    renderWithdrawnCandidates_("beforeWithdrawnCandidates");
   }
 
 
@@ -376,6 +379,7 @@
     renderStatusBadge_();
     renderConfidenceCandidate_();
     renderOptions_();
+    renderWithdrawnCandidates_("voteWithdrawnCandidates");
 
     const confirmButton =
       document.getElementById(
@@ -790,6 +794,31 @@
         list.appendChild(label);
       }
     );
+  }
+
+  function renderWithdrawnCandidates_(elementId) {
+    const box = document.getElementById(elementId);
+    if (!box) return;
+    box.innerHTML = "";
+    if (!currentWithdrawnCandidates.length) {
+      box.classList.add("hidden");
+      return;
+    }
+    const heading = document.createElement("h2");
+    heading.textContent = "候補者辞退のお知らせ";
+    box.appendChild(heading);
+    currentWithdrawnCandidates.forEach(function(candidate) {
+      const item = document.createElement("div");
+      item.className = "withdrawnCandidate";
+      const name = document.createElement("strong");
+      name.textContent = "【辞退】" + String(candidate.name || "");
+      const detail = document.createElement("p");
+      detail.textContent = [candidate.withdrawnAt, candidate.withdrawnReason].filter(Boolean).join("\n");
+      item.appendChild(name);
+      item.appendChild(detail);
+      box.appendChild(item);
+    });
+    box.classList.remove("hidden");
   }
 
 
