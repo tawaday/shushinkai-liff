@@ -1,478 +1,411 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <base target="_top">
+
   <meta charset="UTF-8">
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
 
-  <title>宗心会 LIFF動作確認</title>
+  <title>宗心会 電子投票</title>
 
-  <script
-    charset="utf-8"
+  <script charset="utf-8"
     src="https://static.line-scdn.net/liff/edge/2/sdk.js">
   </script>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      padding:
-        max(24px, env(safe-area-inset-top))
-        20px
-        max(24px, env(safe-area-inset-bottom));
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Helvetica Neue",
-        "Yu Gothic",
-        sans-serif;
-      background: #f5f0f1;
-      color: #4b111b;
-    }
-
-    .card {
-      width: 100%;
-      max-width: 560px;
-      margin: 0 auto;
-      padding: 36px 24px;
-      background: #ffffff;
-      border-radius: 22px;
-      box-shadow: 0 14px 40px rgba(60, 20, 30, 0.12);
-    }
-
-    .mark {
-      width: 76px;
-      height: 76px;
-      margin: 0 auto 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      background: #650f20;
-      color: #ddb84f;
-      font-size: 20px;
-      font-weight: 700;
-    }
-
-    h1 {
-      margin: 0;
-      text-align: center;
-      font-size: 25px;
-    }
-
-    .subtitle {
-      margin: 10px 0 28px;
-      text-align: center;
-      color: #777;
-      line-height: 1.7;
-    }
-
-    .status {
-      margin-bottom: 22px;
-      padding: 16px;
-      border-radius: 14px;
-      background: #f8f3f4;
-      text-align: center;
-      font-weight: 700;
-      line-height: 1.6;
-    }
-
-    .status.loading {
-      color: #6c5660;
-    }
-
-    .status.success {
-      color: #165b36;
-      background: #eef8f2;
-    }
-
-    .status.error {
-      color: #a02330;
-      background: #fff0f1;
-    }
-
-    .profile {
-      display: none;
-    }
-
-    .profileImage {
-      display: block;
-      width: 88px;
-      height: 88px;
-      margin: 0 auto 18px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: #eee;
-    }
-
-    .row {
-      padding: 14px 0;
-      border-bottom: 1px solid #eee6e8;
-    }
-
-    .label {
-      margin-bottom: 5px;
-      font-size: 12px;
-      color: #999;
-    }
-
-    .value {
-      color: #4b111b;
-      font-size: 15px;
-      line-height: 1.55;
-      overflow-wrap: anywhere;
-    }
-
-    .tokenResult {
-      font-weight: 700;
-    }
-
-    .button {
-      width: 100%;
-      margin-top: 22px;
-      padding: 15px;
-      border: 1px solid #7b2634;
-      border-radius: 13px;
-      background: #ffffff;
-      color: #641321;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .debug {
-      margin-top: 24px;
-      padding: 14px;
-      border-radius: 12px;
-      background: #f7f7f7;
-      color: #777;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-  </style>
+  <link rel="stylesheet" href="./election.css?v=31">
 </head>
 
 <body>
-  <main class="card">
-    <div class="mark">宗心会</div>
 
-    <h1>LIFF動作確認</h1>
+  <main class="appShell">
 
-    <p class="subtitle">
-      GitHub Pages上で<br>
-      LINE認証を確認しています。
-    </p>
+    <!-- =========================================
+         ヘッダー
+    ========================================== -->
+    <header class="appHeader">
+      <div class="headerMark">宗心会</div>
 
-    <div id="status" class="status loading">
-      LIFFを初期化しています…
-    </div>
-
-    <section id="profile" class="profile">
-      <img
-        id="profileImage"
-        class="profileImage"
-        alt="LINEプロフィール画像"
-      >
-
-      <div class="row">
-        <div class="label">表示名</div>
-        <div id="displayName" class="value">－</div>
+      <div class="headerText">
+        <div class="headerTitle">電子投票</div>
+        <div class="headerSub">SHUSHINKAI ELECTRONIC VOTING</div>
       </div>
+    </header>
 
-      <div class="row">
-        <div class="label">LINE User ID</div>
-        <div id="userId" class="value">－</div>
-      </div>
 
-      <div class="row">
-        <div class="label">実行環境</div>
-        <div id="environment" class="value">－</div>
-      </div>
+    <!-- =========================================
+         読み込み中
+    ========================================== -->
+    <section id="loadingView" class="view">
+      <div class="card loadingCard">
 
-      <div class="row">
-        <div class="label">ログイン状態</div>
-        <div id="loginState" class="value">－</div>
-      </div>
+        <div class="spinner" aria-hidden="true"></div>
 
-      <div class="row">
-        <div class="label">IDトークン</div>
-        <div id="tokenState" class="value tokenResult">－</div>
-      </div>
+        <div class="loadingText">
+          選挙情報を読み込んでいます
+        </div>
 
-      <div id="gasAuthResult" class="status">
-        GAS認証はまだ実行していません
       </div>
-      
-      <button
-        id="gasAuthButton"
-        type="button"
-        class="button">
-        GAS認証テスト
-      </button>
-      
-      <button
-        type="button"
-        class="button"
-        onclick="reloadPage()">
-        再読み込み
-      </button>
     </section>
 
-    <div id="debug" class="debug"></div>
+    <!-- =========================================
+         投票開始前
+    ========================================== -->
+    <section id="beforeView" class="view hidden">
+
+      <div class="card completeCard">
+
+        <div class="resultIcon waitingIcon">◷</div>
+
+        <h1 class="resultTitle">
+          投票開始前です
+        </h1>
+
+        <p id="beforeMessage" class="resultMessage">
+          投票開始までお待ちください。
+        </p>
+
+        <div
+          id="beforePeriodBox"
+          class="privacyMessage hidden"
+        >
+          <div class="statePeriodLabel">投票期間</div>
+          <div id="beforePeriodText"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         投票終了
+    ========================================== -->
+    <section id="closedView" class="view hidden">
+
+      <div class="card completeCard">
+
+        <div class="resultIcon closedIcon">✓</div>
+
+        <h1 class="resultTitle">
+          投票は終了しました
+        </h1>
+
+        <p id="closedMessage" class="resultMessage">
+          ご協力ありがとうございました。
+        </p>
+
+        <div
+          id="closedPeriodBox"
+          class="privacyMessage hidden"
+        >
+          <div class="statePeriodLabel">投票期間</div>
+          <div id="closedPeriodText"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- =========================================
+         投票権なし
+    ========================================== -->
+    <section id="ineligibleView" class="view hidden">
+      <div class="card errorCard">
+        <div class="resultIcon waitingIcon">—</div>
+        <h1 class="resultTitle">この選挙には投票できません</h1>
+        <p id="ineligibleReason" class="resultMessage">
+          現在の会員情報では投票できません。
+        </p>
+        <div class="privacyMessage">
+          投票権について不明な点は事務局へお問い合わせください。
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================
+         エラー
+    ========================================== -->
+    <section id="errorView" class="view hidden">
+      <div class="card errorCard">
+
+        <div class="resultIcon errorIcon">!</div>
+
+        <h1 class="resultTitle">
+          投票画面を表示できません
+        </h1>
+
+        <p id="errorMessage" class="resultMessage">
+          エラーが発生しました。
+        </p>
+
+        <button
+          id="errorRetryButton"
+          type="button"
+          class="button secondaryButton"
+          onclick="reloadElection()"
+        >
+          再読み込み
+        </button>
+
+      </div>
+    </section>
+
+
+    <!-- =========================================
+         投票画面
+    ========================================== -->
+    <section id="voteView" class="view hidden">
+
+      <div class="card electionCard">
+
+        <div id="statusBadge" class="statusBadge">
+          投票受付中
+        </div>
+
+        <h1 id="electionTitle" class="electionTitle">
+          宗心会 次期会長選挙
+        </h1>
+
+        <p id="electionDescription" class="electionDescription">
+        </p>
+
+        <div
+          id="electionPeriod"
+          class="periodBox hidden"
+        >
+          <div class="periodLabel">投票期間</div>
+          <div id="periodText" class="periodText"></div>
+        </div>
+
+        <div
+          id="resultRuleBox"
+          class="ruleBox hidden"
+        >
+          <div class="ruleLabel">選出・信任条件</div>
+          <div id="resultRuleText" class="ruleText"></div>
+        </div>
+
+      </div>
+
+      <!-- 候補者が1名の場合の候補者表示 -->
+      <div
+        id="confidenceCandidateCard"
+        class="card confidenceCandidateCard hidden"
+      >
+        <div class="confidenceCandidateLabel">
+          次期会長候補者
+        </div>
+        <div class="confidenceCandidateIdentity">
+          <img id="confidenceCandidatePhoto" class="confidenceCandidatePhoto hidden" alt="候補者写真">
+          <div>
+            <div
+              id="confidenceCandidateName"
+              class="confidenceCandidateName"
+            ></div>
+            <div id="confidenceCandidateMeta" class="candidateMeta hidden"></div>
+          </div>
+        </div>
+
+        <div
+          id="confidenceCandidateProfile"
+          class="confidenceCandidateProfile hidden"
+        ></div>
+
+        <div
+          id="confidenceCandidateStatement"
+          class="confidenceCandidateStatement hidden"
+        ></div>
+        <div
+          id="confidenceCandidateManifesto"
+          class="candidateManifesto hidden"
+        ></div>
+      </div>
+      
+      <!-- 候補者・選択肢 -->
+      <div id="optionList" class="optionList"></div>
+
+
+      <!-- 注意事項 -->
+      <div class="card noticeCard">
+
+        <h2 class="noticeTitle">投票にあたって</h2>
+
+        <ul class="noticeList">
+          <li>投票できるのは1人1回です。</li>
+          <li>送信後は投票内容を変更できません。</li>
+          <li>投票内容は無記名で保存されます。</li>
+        </ul>
+
+      </div>
+
+
+      <div class="bottomAction">
+
+        <button
+          id="confirmButton"
+          type="button"
+          class="button primaryButton"
+          onclick="openConfirmView()"
+          disabled
+        >
+          投票内容を確認する
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         確認画面
+    ========================================== -->
+    <section id="confirmView" class="view hidden">
+
+      <div class="card confirmCard">
+
+        <div class="sectionEyebrow">
+          投票内容の確認
+        </div>
+
+        <h1 class="confirmTitle">
+          この内容で投票します
+        </h1>
+
+        <div class="selectedBox">
+
+          <div class="selectedLabel">
+            選択した内容
+          </div>
+
+          <div id="selectedOptionLabel" class="selectedValue">
+          </div>
+
+          <div
+            id="selectedCandidateName"
+            class="selectedCandidate hidden"
+          >
+          </div>
+
+        </div>
+
+        <div class="finalWarning">
+          「投票する」を押すと、投票内容の変更はできません。
+        </div>
+
+      </div>
+
+
+      <div class="confirmActions">
+
+        <button
+          id="backButton"
+          type="button"
+          class="button secondaryButton"
+          onclick="backToVoteView()"
+        >
+          戻る
+        </button>
+
+        <button
+          id="submitButton"
+          type="button"
+          class="button primaryButton"
+          onclick="submitVote()"
+        >
+          投票する
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         送信中
+    ========================================== -->
+    <section id="sendingView" class="view hidden">
+
+      <div class="card loadingCard">
+
+        <div class="spinner" aria-hidden="true"></div>
+
+        <div class="loadingText">
+          投票を受け付けています
+        </div>
+
+        <div class="loadingSub">
+          画面を閉じずにお待ちください
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         投票完了
+    ========================================== -->
+    <section id="completeView" class="view hidden">
+
+      <div class="card completeCard">
+
+        <div class="resultIcon completeIcon">✓</div>
+
+        <h1 class="resultTitle">
+          投票ありがとうございました
+        </h1>
+
+        <p class="resultMessage">
+          あなたの投票を受け付けました。
+        </p>
+
+        <div class="privacyMessage">
+          投票内容は、投票者情報とは分離して
+          無記名で保存されています。
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         投票済み
+    ========================================== -->
+    <section id="alreadyVotedView" class="view hidden">
+
+      <div class="card completeCard">
+
+        <div class="resultIcon votedIcon">✓</div>
+
+        <h1 class="resultTitle">
+          投票済みです
+        </h1>
+
+        <p class="resultMessage">
+          この選挙への投票は、すでに受け付けています。
+        </p>
+
+        <div class="privacyMessage">
+          投票内容は表示されません。
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <footer class="appFooter">
+      日本歯科大学新潟生命歯学部<br>
+      少林寺拳法部OB会 宗心会
+    </footer>
+
   </main>
 
-  <script>
-    const LIFF_ID = "2010887632-4M5XI8d7";
-    const GAS_API_URL = 
-      "https://script.google.com/macros/s/AKfycbyYfVwfTY6p-2O0jBhWEeUVGLYtihMuSB0EdmO1bIByEK_hgh0fSb4IDBkJ151SElc/exec";
-    
-    document.addEventListener("DOMContentLoaded", function () {
-      const gasAuthButton =
-        document.getElementById("gasAuthButton");
-    
-      if (gasAuthButton) {
-        gasAuthButton.addEventListener(
-          "click",
-          sendTokenToGas
-        );
-      }
-    
-      initializeLiff();
-    });
+  <script src="./app.js?v=31"></script>
 
-    async function initializeLiff() {
-      const status = document.getElementById("status");
-
-      try {
-        writeDebug_("LIFF SDKを読み込みました");
-
-        await liff.init({
-          liffId: LIFF_ID
-        });
-
-        writeDebug_("liff.init() 成功");
-
-        /*
-         * 外部ブラウザから直接GitHub Pagesを開いた場合は、
-         * LINEログインへ移動します。
-         *
-         * LINE内でLIFF URLから開いた場合は、
-         * 通常ここではすでにログイン済みです。
-         */
-        if (!liff.isLoggedIn()) {
-          status.textContent =
-            "LINEログイン画面へ移動します…";
-
-          writeDebug_(
-            "未ログインのため liff.login() を実行"
-          );
-
-          liff.login({
-            redirectUri:
-              window.location.origin +
-              window.location.pathname
-          });
-
-          return;
-        }
-
-        writeDebug_("LINEログイン済み");
-
-        const profile = await liff.getProfile();
-        const idToken = liff.getIDToken();
-
-        document.getElementById("displayName").textContent =
-          profile.displayName || "取得できませんでした";
-
-        document.getElementById("userId").textContent =
-          profile.userId || "取得できませんでした";
-
-        document.getElementById("environment").textContent =
-          liff.isInClient()
-            ? "LINEアプリ内（LIFFブラウザ）"
-            : "外部ブラウザ";
-
-        document.getElementById("loginState").textContent =
-          liff.isLoggedIn()
-            ? "ログイン済み"
-            : "未ログイン";
-
-        document.getElementById("tokenState").textContent =
-          idToken
-            ? "取得成功"
-            : "取得できませんでした";
-
-        if (profile.pictureUrl) {
-          document.getElementById("profileImage").src =
-            profile.pictureUrl;
-        } else {
-          document.getElementById("profileImage").style.display =
-            "none";
-        }
-
-        document.getElementById("profile").style.display =
-          "block";
-
-        status.className = "status success";
-        status.textContent =
-          "LIFFの初期化とLINE認証に成功しました";
-
-        writeDebug_(
-          "profile取得成功\n" +
-          "userId: " + profile.userId + "\n" +
-          "ID token: " +
-          (idToken ? "取得成功" : "取得失敗")
-        );
-
-      } catch (error) {
-        console.error(error);
-
-        status.className = "status error";
-        status.textContent =
-          "LIFFの初期化に失敗しました";
-
-        writeDebug_(
-          "ERROR\n" +
-          (error && error.message
-            ? error.message
-            : String(error))
-        );
-      }
-    }
-
-    async function sendTokenToGas() {
-      writeDebug_("GAS認証ボタンが押されました");
-      
-      const button =
-        document.getElementById("gasAuthButton");
-    
-      try {
-        if (button) {
-          button.disabled = true;
-          button.textContent = "GASで認証しています…";
-        }
-    
-        const idToken = liff.getIDToken();
-    
-        if (!idToken) {
-          throw new Error(
-            "IDトークンを取得できませんでした。"
-          );
-        }
-    
-        writeDebug_("GAS認証APIへ送信開始");
-    
-        /*
-         * URLSearchParamsを使用して、
-         * application/x-www-form-urlencoded形式で送信。
-         * 不要なCORSプリフライトを発生させません。
-         */
-        const body = new URLSearchParams({
-          action: "authenticate",
-          idToken: idToken
-        });
-    
-        const response = await fetch(
-          GAS_API_URL,
-          {
-            method: "POST",
-            body: body,
-            redirect: "follow"
-          }
-        );
-    
-        if (!response.ok) {
-          throw new Error(
-            "GAS通信エラー: HTTP " +
-            response.status
-          );
-        }
-    
-        const result = await response.json();
-    
-        writeDebug_(
-          "GAS応答\n" +
-          JSON.stringify(result, null, 2)
-        );
-    
-        if (!result.ok) {
-          throw new Error(
-            result.error || "GAS認証に失敗しました。"
-          );
-        }
-    
-        document.getElementById(
-          "gasAuthResult"
-        ).innerHTML =
-          "<strong>GAS認証成功</strong><br>" +
-          "会員ID：" +
-          escapeHtml_(result.memberId) +
-          "<br>" +
-          "表示名：" +
-          escapeHtml_(result.displayName || "―");
-    
-      } catch (error) {
-        console.error(error);
-    
-        writeDebug_(
-          "GAS認証ERROR\n" +
-          (
-            error && error.message
-              ? error.message
-              : String(error)
-          )
-        );
-    
-        document.getElementById(
-          "gasAuthResult"
-        ).textContent =
-          "GAS認証失敗：" +
-          (
-            error && error.message
-              ? error.message
-              : String(error)
-          );
-    
-      } finally {
-        if (button) {
-          button.disabled = false;
-          button.textContent = "GAS認証テスト";
-        }
-      }
-    }
-
-    function escapeHtml_(value) {
-      return String(value == null ? "" : value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-    
-    function writeDebug_(message) {
-      const debug = document.getElementById("debug");
-
-      const time =
-        new Date().toLocaleTimeString("ja-JP");
-
-      debug.textContent +=
-        "[" + time + "] " + message + "\n\n";
-    }
-
-    function reloadPage() {
-      window.location.reload();
-    }
-    
-  </script>
 </body>
 </html>

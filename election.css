@@ -1,0 +1,904 @@
+  :root {
+    --maroon: #5b1628;
+    --maroon-dark: #3a0d19;
+    --maroon-soft: #f3e8eb;
+
+    --gold: #c8a85a;
+    --gold-soft: #f5ecd5;
+
+    --text: #252525;
+    --subtext: #666666;
+    --border: #ddd7d9;
+
+    --background: #f4f2f2;
+    --white: #ffffff;
+
+    --danger: #a52a2a;
+    --success: #34754b;
+
+    --shadow:
+      0 8px 24px rgba(40, 20, 26, 0.08);
+  }
+
+
+  * {
+    box-sizing: border-box;
+  }
+
+
+  html {
+    min-height: 100%;
+    background: var(--background);
+  }
+
+
+  body {
+    margin: 0;
+    min-height: 100%;
+    color: var(--text);
+    background:
+      linear-gradient(
+        180deg,
+        #eee7e9 0,
+        var(--background) 210px
+      );
+
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      "Hiragino Sans",
+      "Hiragino Kaku Gothic ProN",
+      "Yu Gothic",
+      "Meiryo",
+      sans-serif;
+
+    -webkit-text-size-adjust: 100%;
+  }
+
+
+  button,
+  input {
+    font: inherit;
+  }
+
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+
+  .hidden {
+    display: none !important;
+  }
+
+
+  .appShell {
+    width: min(100%, 720px);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding:
+      env(safe-area-inset-top)
+      14px
+      calc(28px + env(safe-area-inset-bottom));
+  }
+
+
+  /* =========================================
+     ヘッダー
+  ========================================== */
+
+  .appHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 17px 6px 18px;
+  }
+
+
+  .headerMark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 54px;
+    height: 54px;
+
+    color: var(--gold);
+    background:
+      linear-gradient(
+        145deg,
+        #2d0912,
+        var(--maroon)
+      );
+
+    border: 1px solid rgba(200, 168, 90, 0.75);
+    border-radius: 50%;
+
+    font-family: serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+
+    box-shadow:
+      0 5px 15px rgba(40, 12, 22, 0.2);
+  }
+
+
+  .headerText {
+    min-width: 0;
+  }
+
+
+  .headerTitle {
+    color: var(--maroon-dark);
+    font-family: serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+
+
+  .headerSub {
+    margin-top: 3px;
+
+    color: #8b747b;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.1px;
+  }
+
+
+  /* =========================================
+     共通
+  ========================================== */
+
+  .view {
+    width: 100%;
+  }
+
+
+  .card {
+    background: var(--white);
+    border: 1px solid rgba(91, 22, 40, 0.1);
+    border-radius: 18px;
+
+    box-shadow: var(--shadow);
+  }
+
+
+  .electionCard {
+    position: relative;
+    overflow: hidden;
+
+    padding: 29px 22px 23px;
+  }
+
+
+  .electionCard::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 5px;
+
+    content: "";
+
+    background:
+      linear-gradient(
+        90deg,
+        var(--maroon),
+        var(--gold),
+        var(--maroon)
+      );
+  }
+
+
+  .statusBadge {
+    display: inline-flex;
+    align-items: center;
+
+    min-height: 28px;
+    padding: 5px 11px;
+
+    color: var(--success);
+    background: #e8f3ec;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+
+  .statusBadge::before {
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+
+    content: "";
+
+    background: var(--success);
+    border-radius: 50%;
+  }
+
+
+  .statusBadge.closed {
+    color: var(--danger);
+    background: #f7e7e7;
+  }
+
+
+  .statusBadge.closed::before {
+    background: var(--danger);
+  }
+
+
+  .electionTitle {
+    margin: 17px 0 0;
+
+    color: var(--maroon-dark);
+
+    font-family: serif;
+    font-size: clamp(24px, 6vw, 33px);
+    line-height: 1.38;
+    letter-spacing: 1px;
+  }
+
+
+  .electionDescription {
+    margin: 14px 0 0;
+
+    color: var(--subtext);
+    font-size: 15px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+  }
+
+
+  .periodBox,
+  .ruleBox {
+    margin-top: 18px;
+    padding: 13px 15px;
+
+    background: #faf8f8;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+
+  .periodLabel,
+  .ruleLabel {
+    margin-bottom: 5px;
+
+    color: var(--maroon);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+
+  .periodText,
+  .ruleText {
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+
+  /* =========================================
+     選択肢
+  ========================================== */
+
+  .optionList {
+    display: grid;
+    gap: 13px;
+
+    margin-top: 15px;
+  }
+
+
+  .optionCard {
+    position: relative;
+    display: block;
+
+    cursor: pointer;
+  }
+
+
+  .optionRadio {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+
+  .optionBody {
+    position: relative;
+
+    min-height: 86px;
+    padding: 19px 54px 19px 20px;
+
+    background: var(--white);
+    border: 2px solid transparent;
+    border-radius: 16px;
+
+    box-shadow: var(--shadow);
+
+    transition:
+      border-color 0.16s ease,
+      transform 0.16s ease,
+      background 0.16s ease;
+  }
+
+
+  .optionBody::after {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+
+    width: 22px;
+    height: 22px;
+
+    content: "";
+    transform: translateY(-50%);
+
+    background: var(--white);
+    border: 2px solid #b9afb2;
+    border-radius: 50%;
+  }
+
+
+  .optionRadio:checked + .optionBody {
+    background:
+      linear-gradient(
+        135deg,
+        #ffffff,
+        #faf4f6
+      );
+
+    border-color: var(--maroon);
+  }
+
+
+  .optionRadio:checked + .optionBody::after {
+    background:
+      radial-gradient(
+        circle,
+        var(--maroon) 0 5px,
+        var(--white) 6px 100%
+      );
+
+    border-color: var(--maroon);
+  }
+
+
+  .optionCard:active .optionBody {
+    transform: scale(0.992);
+  }
+
+
+  .optionLabel {
+    color: var(--maroon-dark);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+
+  .candidateName {
+    margin-top: 5px;
+
+    color: var(--text);
+    font-family: serif;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .optionBody.hasCandidatePhoto {
+    min-height: 154px;
+    padding-left: 124px;
+  }
+
+  .candidatePhoto {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 84px;
+    height: 108px;
+    object-fit: cover;
+    border-radius: 12px;
+    background: #eee8e9;
+  }
+
+  .candidateMeta {
+    margin-top: 6px;
+    color: var(--subtext);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+
+  .candidateProfile {
+    margin-top: 10px;
+
+    color: var(--subtext);
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+
+  .candidateStatement {
+    margin-top: 12px;
+    padding-top: 12px;
+
+    color: #4c4547;
+
+    border-top:
+      1px solid rgba(91, 22, 40, 0.1);
+
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+
+  .candidateManifesto {
+    margin-top: 12px;
+    padding-top: 12px;
+    color: #4c4547;
+    border-top: 1px solid rgba(91, 22, 40, 0.1);
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+
+
+  /* =========================================
+     注意書き
+  ========================================== */
+
+  .noticeCard {
+    margin-top: 15px;
+    padding: 19px 20px;
+  }
+
+
+  .noticeTitle {
+    margin: 0;
+
+    color: var(--maroon);
+    font-size: 15px;
+  }
+
+
+  .noticeList {
+    margin: 11px 0 0;
+    padding-left: 1.4em;
+
+    color: var(--subtext);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+
+  /* =========================================
+     ボタン
+  ========================================== */
+
+  .bottomAction {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+
+    margin: 12px -4px 0;
+    padding:
+      10px 4px
+      calc(8px + env(safe-area-inset-bottom));
+
+    background:
+      linear-gradient(
+        180deg,
+        rgba(244, 242, 242, 0),
+        rgba(244, 242, 242, 0.95) 25%,
+        var(--background)
+      );
+  }
+
+
+  .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    min-height: 55px;
+    padding: 12px 17px;
+
+    border: 0;
+    border-radius: 14px;
+
+    cursor: pointer;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+
+
+  .button:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+
+
+  .button:disabled {
+    cursor: default;
+    opacity: 0.42;
+  }
+
+
+  .primaryButton {
+    color: var(--white);
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--maroon),
+        var(--maroon-dark)
+      );
+
+    box-shadow:
+      0 8px 20px rgba(91, 22, 40, 0.24);
+  }
+
+
+  .secondaryButton {
+    color: var(--maroon);
+    background: var(--white);
+
+    border: 1px solid rgba(91, 22, 40, 0.26);
+  }
+
+
+  /* =========================================
+     確認画面
+  ========================================== */
+
+  .confirmCard {
+    padding: 28px 21px 23px;
+  }
+
+
+  .sectionEyebrow {
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+  }
+
+
+  .confirmTitle {
+    margin: 8px 0 0;
+
+    color: var(--maroon-dark);
+    font-family: serif;
+    font-size: 26px;
+    line-height: 1.45;
+  }
+
+
+  .selectedBox {
+    margin-top: 23px;
+    padding: 20px;
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--maroon-soft),
+        #ffffff
+      );
+
+    border:
+      1px solid rgba(91, 22, 40, 0.18);
+
+    border-radius: 14px;
+  }
+
+
+  .selectedLabel {
+    color: var(--subtext);
+    font-size: 12px;
+  }
+
+
+  .selectedValue {
+    margin-top: 7px;
+
+    color: var(--maroon-dark);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+
+  .selectedCandidate {
+    margin-top: 7px;
+
+    color: var(--subtext);
+    font-size: 14px;
+  }
+
+
+  .finalWarning {
+    margin-top: 20px;
+    padding: 13px 14px;
+
+    color: #6e4212;
+    background: #fff6e4;
+
+    border: 1px solid #ead4a7;
+    border-radius: 11px;
+
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+
+  .confirmActions {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 11px;
+
+    margin-top: 15px;
+  }
+
+
+  /* =========================================
+     読込・結果
+  ========================================== */
+
+  .loadingCard,
+  .errorCard,
+  .completeCard {
+    padding: 45px 22px;
+
+    text-align: center;
+  }
+
+
+  .spinner {
+    width: 43px;
+    height: 43px;
+    margin: 0 auto;
+
+    border: 4px solid #e4dadd;
+    border-top-color: var(--maroon);
+    border-radius: 50%;
+
+    animation: spin 0.85s linear infinite;
+  }
+
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+
+  .loadingText {
+    margin-top: 20px;
+
+    color: var(--maroon-dark);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+
+  .loadingSub {
+    margin-top: 7px;
+
+    color: var(--subtext);
+    font-size: 12px;
+  }
+
+
+  .resultIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 66px;
+    height: 66px;
+    margin: 0 auto;
+
+    border-radius: 50%;
+
+    font-size: 35px;
+    font-weight: 700;
+  }
+
+
+  .completeIcon,
+  .votedIcon {
+    color: var(--success);
+    background: #e7f3eb;
+  }
+
+
+  .errorIcon {
+    color: var(--danger);
+    background: #f8e5e5;
+  }
+
+
+  .resultTitle {
+    margin: 20px 0 0;
+
+    color: var(--maroon-dark);
+
+    font-family: serif;
+    font-size: 25px;
+    line-height: 1.45;
+  }
+
+
+  .resultMessage {
+    margin: 13px 0 0;
+
+    color: var(--subtext);
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+
+  .privacyMessage {
+    margin-top: 22px;
+    padding: 14px;
+
+    color: #526357;
+    background: #f1f7f3;
+
+    border-radius: 11px;
+
+    font-size: 12px;
+    line-height: 1.75;
+  }
+
+
+  .errorCard .button {
+    margin-top: 25px;
+  }
+
+
+  /* =========================================
+     フッター
+  ========================================== */
+
+  .appFooter {
+    padding: 27px 10px 5px;
+
+    color: #9a8d91;
+    font-size: 10px;
+    line-height: 1.65;
+    text-align: center;
+  }
+
+
+  @media (min-width: 640px) {
+    .appShell {
+      padding-left: 22px;
+      padding-right: 22px;
+    }
+
+    .electionCard {
+      padding: 33px 30px 27px;
+    }
+
+    .optionBody {
+      padding-left: 25px;
+    }
+  }
+
+    /* =========================================
+     開始前・終了画面
+  ========================================== */
+
+  .waitingIcon {
+    color: #9b7426;
+    background: #f8efd9;
+    font-size: 31px;
+  }
+
+
+  .closedIcon {
+    color: var(--maroon);
+    background: var(--maroon-soft);
+  }
+
+
+  .statePeriodLabel {
+    margin-bottom: 5px;
+
+    color: var(--maroon);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+
+  /* =========================================
+     信任投票候補者
+  ========================================== */
+
+  .confidenceCandidateCard {
+    margin-top: 15px;
+    padding: 22px 21px;
+
+    border-left: 5px solid var(--gold);
+  }
+
+
+  .confidenceCandidateLabel {
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+  }
+
+
+  .confidenceCandidateName {
+    margin-top: 8px;
+
+    color: var(--maroon-dark);
+    font-family: serif;
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  .confidenceCandidateIdentity {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  .confidenceCandidatePhoto {
+    width: 92px;
+    height: 118px;
+    flex: 0 0 auto;
+    object-fit: cover;
+    border-radius: 12px;
+    background: #eee8e9;
+  }
+
+  .confidenceCandidateIdentity .confidenceCandidateName {
+    margin-top: 0;
+  }
+
+
+  .confidenceCandidateProfile {
+    margin-top: 12px;
+
+    color: var(--subtext);
+    font-size: 13px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+  }
+
+
+  .confidenceCandidateStatement {
+    margin-top: 15px;
+    padding-top: 14px;
+
+    color: #4c4547;
+
+    border-top:
+      1px solid rgba(91, 22, 40, 0.12);
+
+    font-size: 14px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+  }
