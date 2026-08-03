@@ -492,17 +492,19 @@
       currentConfidenceCandidate
     );
 
-    renderOptionalText_(
+    renderCandidateDetailText_(
       "confidenceCandidateProfile",
+      "プロフィール",
       currentConfidenceCandidate.profile
     );
 
-    renderOptionalText_(
+    renderCandidateDetailText_(
       "confidenceCandidateStatement",
+      "所信",
       currentConfidenceCandidate.statement
     );
 
-    renderLabeledText_(
+    renderCandidateDetailText_(
       "confidenceCandidateManifesto",
       "公約",
       currentConfidenceCandidate.manifesto
@@ -514,21 +516,13 @@
     const detailsPanel = document.getElementById(
       "confidenceCandidateDetails"
     );
-    const hasDetails = [
-      currentConfidenceCandidate.profile,
-      currentConfidenceCandidate.statement,
-      currentConfidenceCandidate.manifesto
-    ].some(function(value) {
-      return String(value || "").trim() !== "";
-    });
-
     detailsPanel.classList.add("hidden");
     detailsButton.setAttribute("aria-expanded", "false");
     detailsButton.textContent = "プロフィール・所信・公約を見る";
     detailsButton.onclick = function() {
       toggleCandidateDetails_(detailsButton, detailsPanel);
     };
-    detailsButton.classList.toggle("hidden", !hasDetails);
+    detailsButton.classList.remove("hidden");
 
     card.classList.remove("hidden");
   }
@@ -540,6 +534,14 @@
     button.textContent = isOpening
       ? "詳細を閉じる"
       : "プロフィール・所信・公約を見る";
+  }
+
+  function renderCandidateDetailText_(elementId, label, value) {
+    const element = document.getElementById(elementId);
+    const text = String(value || "").trim();
+    element.textContent =
+      "【" + label + "】\n" + (text || "未登録");
+    element.classList.remove("hidden");
   }
 
 
@@ -699,14 +701,14 @@
         detailsPanel.className =
           "candidateDetails hidden";
 
-        let hasDetails = false;
+        const isCandidateOption = Boolean(candidateName);
 
         const profile =
           String(
             option.profile || ""
           ).trim();
 
-        if (profile) {
+        if (isCandidateOption) {
           const profileBox =
             document.createElement("div");
 
@@ -714,12 +716,11 @@
             "candidateProfile";
 
           profileBox.textContent =
-            profile;
+            "【プロフィール】\n" + (profile || "未登録");
 
           detailsPanel.appendChild(
             profileBox
           );
-          hasDetails = true;
         }
 
 
@@ -728,7 +729,7 @@
             option.statement || ""
           ).trim();
 
-        if (statement) {
+        if (isCandidateOption) {
           const statementBox =
             document.createElement("div");
 
@@ -736,24 +737,23 @@
             "candidateStatement";
 
           statementBox.textContent =
-            statement;
+            "【所信】\n" + (statement || "未登録");
 
           detailsPanel.appendChild(
             statementBox
           );
-          hasDetails = true;
         }
 
         const manifesto = String(option.manifesto || "").trim();
-        if (manifesto) {
+        if (isCandidateOption) {
           const manifestoBox = document.createElement("div");
           manifestoBox.className = "candidateManifesto";
-          manifestoBox.textContent = "【公約】\n" + manifesto;
+          manifestoBox.textContent =
+            "【公約】\n" + (manifesto || "未登録");
           detailsPanel.appendChild(manifestoBox);
-          hasDetails = true;
         }
 
-        if (hasDetails) {
+        if (isCandidateOption) {
           const detailsButton =
             document.createElement("button");
 
