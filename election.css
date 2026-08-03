@@ -452,6 +452,33 @@
     white-space: pre-wrap;
   }
 
+  .candidateDetailsButton {
+    width: 100%;
+    margin-top: 15px;
+    padding: 11px 13px;
+    color: var(--maroon);
+    background: var(--maroon-soft);
+    border: 1px solid rgba(91, 22, 40, 0.2);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.5;
+    cursor: pointer;
+  }
+
+  .candidateDetailsButton::after {
+    margin-left: 8px;
+    content: "＋";
+  }
+
+  .candidateDetailsButton[aria-expanded="true"]::after {
+    content: "－";
+  }
+
+  .candidateDetails {
+    margin-top: 12px;
+  }
+
 
   /* =========================================
      注意書き

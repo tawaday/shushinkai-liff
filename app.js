@@ -508,7 +508,38 @@
       currentConfidenceCandidate.manifesto
     );
 
+    const detailsButton = document.getElementById(
+      "confidenceCandidateDetailsButton"
+    );
+    const detailsPanel = document.getElementById(
+      "confidenceCandidateDetails"
+    );
+    const hasDetails = [
+      currentConfidenceCandidate.profile,
+      currentConfidenceCandidate.statement,
+      currentConfidenceCandidate.manifesto
+    ].some(function(value) {
+      return String(value || "").trim() !== "";
+    });
+
+    detailsPanel.classList.add("hidden");
+    detailsButton.setAttribute("aria-expanded", "false");
+    detailsButton.textContent = "プロフィール・所信・公約を見る";
+    detailsButton.onclick = function() {
+      toggleCandidateDetails_(detailsButton, detailsPanel);
+    };
+    detailsButton.classList.toggle("hidden", !hasDetails);
+
     card.classList.remove("hidden");
+  }
+
+  function toggleCandidateDetails_(button, panel) {
+    const isOpening = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden", !isOpening);
+    button.setAttribute("aria-expanded", String(isOpening));
+    button.textContent = isOpening
+      ? "詳細を閉じる"
+      : "プロフィール・所信・公約を見る";
   }
 
 
@@ -662,6 +693,14 @@
         }
 
 
+        const detailsPanel =
+          document.createElement("div");
+
+        detailsPanel.className =
+          "candidateDetails hidden";
+
+        let hasDetails = false;
+
         const profile =
           String(
             option.profile || ""
@@ -677,9 +716,10 @@
           profileBox.textContent =
             profile;
 
-          body.appendChild(
+          detailsPanel.appendChild(
             profileBox
           );
+          hasDetails = true;
         }
 
 
@@ -698,9 +738,10 @@
           statementBox.textContent =
             statement;
 
-          body.appendChild(
+          detailsPanel.appendChild(
             statementBox
           );
+          hasDetails = true;
         }
 
         const manifesto = String(option.manifesto || "").trim();
@@ -708,7 +749,38 @@
           const manifestoBox = document.createElement("div");
           manifestoBox.className = "candidateManifesto";
           manifestoBox.textContent = "【公約】\n" + manifesto;
-          body.appendChild(manifestoBox);
+          detailsPanel.appendChild(manifestoBox);
+          hasDetails = true;
+        }
+
+        if (hasDetails) {
+          const detailsButton =
+            document.createElement("button");
+
+          detailsButton.type = "button";
+          detailsButton.className =
+            "candidateDetailsButton";
+          detailsButton.textContent =
+            "プロフィール・所信・公約を見る";
+          detailsButton.setAttribute(
+            "aria-expanded",
+            "false"
+          );
+
+          detailsButton.addEventListener(
+            "click",
+            function(event) {
+              event.preventDefault();
+              event.stopPropagation();
+              toggleCandidateDetails_(
+                detailsButton,
+                detailsPanel
+              );
+            }
+          );
+
+          body.appendChild(detailsButton);
+          body.appendChild(detailsPanel);
         }
 
 
