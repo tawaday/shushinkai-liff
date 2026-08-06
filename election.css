@@ -790,17 +790,17 @@
 
   .alreadyElectionBox {
     margin-top: 20px;
-    padding: 15px 14px;
+    padding: 8px 14px;
 
-    background: var(--gold-soft);
-    border: 1px solid #e3cf99;
+    background: #f8e5a6;
+    border: 1px solid #dfc164;
     border-radius: 11px;
     box-shadow: 0 3px 8px rgba(120, 88, 24, 0.08);
   }
 
 
   .alreadyElectionTitle {
-    margin-top: 5px;
+    margin-top: 0;
 
     color: var(--maroon-dark);
     font-size: 17px;
