@@ -151,6 +151,10 @@
         break;
 
       case "already":
+        setText_(
+          "alreadyElectionTitle",
+          currentElection.title || "電子投票"
+        );
         showView_(ELECTION_VIEW.ALREADY);
         break;
 
