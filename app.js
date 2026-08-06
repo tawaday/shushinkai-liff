@@ -1103,8 +1103,15 @@
 
     console.error(error);
 
+    const detail = String(
+      error && error.message
+        ? error.message
+        : error || ""
+    ).trim();
+
     showError_(
-      "選挙情報の読み込み中にエラーが発生しました。"
+      "選挙情報の読み込み中にエラーが発生しました。" +
+      (detail ? "\n（" + detail + "）" : "")
     );
   }
 
@@ -1129,7 +1136,18 @@
       throw new Error("GAS通信エラー: HTTP " + response.status);
     }
 
-    return response.json();
+    const responseText = await response.text();
+
+    try {
+      return JSON.parse(responseText);
+    } catch (error) {
+      throw new Error(
+        "GASの応答を読み取れませんでした" +
+        (responseText
+          ? ": " + responseText.slice(0, 120)
+          : "（応答が空です）")
+      );
+    }
   }
 
 
