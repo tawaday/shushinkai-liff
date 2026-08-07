@@ -5,12 +5,24 @@
   <header><b>宗心会</b><span>会員ポータル</span></header>
   <section id="loading" class="card"><div class="spinner"></div><p>LINEで本人確認しています</p></section>
   <section id="message" class="card hidden"><h1 id="messageTitle"></h1><p id="messageText"></p><a id="messageLink" class="button hidden"></a></section>
+  <section id="registered" class="card statusCard hidden">
+    <div class="statusIcon" aria-hidden="true">✓</div>
+    <p class="statusEyebrow">LINE連携</p>
+    <h1>すでに登録済みです</h1>
+    <p class="statusLead">このLINEアカウントは<br>宗心会会員情報と連携されています。</p>
+    <dl class="memberSummary">
+      <div><dt>会員番号</dt><dd id="registeredMemberId"></dd></div>
+      <div><dt>氏名</dt><dd id="registeredMemberName"></dd></div>
+      <div><dt>登録日</dt><dd id="registeredAt"></dd></div>
+    </dl>
+  </section>
   <section id="register" class="card hidden"><h1>会員登録</h1><p>名簿と照合し、このLINEアカウントを会員IDに連携します。</p>
     <label>氏名<input id="name" autocomplete="name" placeholder="例：山田 太郎"></label>
     <label>部内期数<input id="clubTerm" inputmode="numeric" placeholder="例：25"></label>
     <label>生年月日<input id="birthDate" type="date"></label>
     <button id="lookupButton" class="button">名簿を確認する</button><p id="registerError" class="error"></p>
+    <a id="applicationLink" class="subLink hidden">会員登録申請がまだの方はこちら</a>
   </section>
   <section id="confirm" class="card hidden"><h1>登録内容の確認</h1><p id="confirmText"></p><button id="confirmButton" class="button">この内容で登録する</button></section>
   <section id="news" class="hidden"><h1>お知らせ</h1><div id="newsList"></div></section>
-</main><script src="portal.js?v=20260805-2"></script></body></html>
+</main><script src="portal.js?v=20260807-1"></script></body></html>
