@@ -28,16 +28,44 @@ async function start() {
   try {
     await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:true });
     if (!liff.isLoggedIn()) {
-      liff.login();
+      liff.login({ redirectUri:location.href });
+      return;
+    }
+    if (isIdTokenExpired_()) {
+      restartLineLogin_();
       return;
     }
     idToken = liff.getIDToken() || "";
     if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
     const result = await api({ action:"resolve", view:launchParams.view, idToken });
+    if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
+      restartLineLogin_();
+      return;
+    }
     handleResolve(result);
   } catch (error) {
     message("画面を開けません", error.message);
   }
+}
+
+function isIdTokenExpired_() {
+  const decoded = typeof liff.getDecodedIDToken === "function"
+    ? liff.getDecodedIDToken()
+    : null;
+  const expiresAt = Number(decoded && decoded.exp || 0) * 1000;
+  return !!expiresAt && expiresAt <= Date.now() + 30000;
+}
+
+function restartLineLogin_() {
+  const retryKey = "shushinkai_liff_auth_retry";
+  const lastRetry = Number(sessionStorage.getItem(retryKey) || 0);
+  if (Date.now() - lastRetry < 15000) {
+    sessionStorage.removeItem(retryKey);
+    throw Error("LINE認証を更新できませんでした。画面を閉じて、もう一度開いてください。");
+  }
+  sessionStorage.setItem(retryKey, String(Date.now()));
+  try { liff.logout(); } catch (_) {}
+  liff.login({ redirectUri:location.href });
 }
 
 function handleResolve(result) {
