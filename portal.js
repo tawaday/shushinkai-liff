@@ -19,7 +19,8 @@ const launchParams = (() => {
   return {
     view: params.get("view") || nested.get("view") || "home",
     election: params.get("election") || nested.get("election") || "chairman_2026",
-    id: params.get("id") || nested.get("id") || ""
+    id: params.get("id") || nested.get("id") || "",
+    newsToken: params.get("nt") || nested.get("nt") || ""
   };
 })();
 
@@ -27,6 +28,15 @@ document.addEventListener("DOMContentLoaded", start);
 
 async function start() {
   try {
+    if (launchParams.view === "news" && launchParams.id && launchParams.newsToken) {
+      const result = await api({
+        action:"resolve", view:"news", id:launchParams.id, newsToken:launchParams.newsToken
+      });
+      if (result.ok) {
+        handleResolve(result);
+        return;
+      }
+    }
     await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:true });
     if (!liff.isLoggedIn()) {
       liff.login({ redirectUri:location.href });
@@ -174,6 +184,7 @@ async function api(data) {
     action:String(data.action || ""),
     view:String(data.view || ""),
     id:String(data.id || ""),
+    newsToken:String(data.newsToken || ""),
     _t:String(Date.now())
   });
   const response = await fetch(PORTAL.GAS_API_URL + "?" + route.toString(), {
