@@ -18,7 +18,8 @@ const launchParams = (() => {
   const nested = new URLSearchParams(query);
   return {
     view: params.get("view") || nested.get("view") || "home",
-    election: params.get("election") || nested.get("election") || "chairman_2026"
+    election: params.get("election") || nested.get("election") || "chairman_2026",
+    id: params.get("id") || nested.get("id") || ""
   };
 })();
 
@@ -37,7 +38,7 @@ async function start() {
     }
     idToken = liff.getIDToken() || "";
     if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
-    const result = await api({ action:"resolve", view:launchParams.view, idToken });
+    const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
       restartLineLogin_();
       return;
@@ -93,7 +94,8 @@ function handleResolve(result) {
     return;
   }
   if (result.view === "news") {
-    renderNews(result.announcements || []);
+    if (result.announcement) renderNewsArticle(result.announcement);
+    else renderNews(result.announcements || []);
     return;
   }
   if (result.view === "contactSent") {
@@ -171,6 +173,7 @@ async function api(data) {
   const route = new URLSearchParams({
     action:String(data.action || ""),
     view:String(data.view || ""),
+    id:String(data.id || ""),
     _t:String(Date.now())
   });
   const response = await fetch(PORTAL.GAS_API_URL + "?" + route.toString(), {
@@ -187,6 +190,7 @@ async function api(data) {
 
 function renderNews(items) {
   show("news");
+  $("newsArticle").classList.add("hidden");
   const list = $("newsList");
   list.replaceChildren();
   if (!items.length) {
@@ -203,12 +207,43 @@ function renderNews(items) {
     const body = document.createElement("p");
     body.textContent = item.body || "";
     article.append(time, heading, body);
-    if (item.url) {
+    if (item.id) {
       const link = document.createElement("a");
-      link.href = item.url;
+      link.href = "?view=news&id=" + encodeURIComponent(item.id);
       link.textContent = "詳しく見る";
       article.append(link);
     }
     list.append(article);
   });
+}
+
+function renderNewsArticle(item) {
+  show("news");
+  $("newsList").replaceChildren();
+  $("newsArticle").classList.remove("hidden");
+  $("newsDate").textContent = item.date || "";
+  $("newsTitle").textContent = item.title || "お知らせ";
+  $("newsSummary").textContent = item.body || "";
+
+  const Font = Quill.import("formats/font");
+  Font.whitelist = ["gothic", "mincho"];
+  Quill.register(Font, true);
+  const Size = Quill.import("attributors/style/size");
+  Size.whitelist = ["12px", "14px", "16px", "18px", "24px", "32px"];
+  Quill.register(Size, true);
+
+  const viewer = new Quill("#newsContent", {
+    readOnly:true,
+    modules:{ toolbar:false },
+    theme:"snow"
+  });
+  if (item.contentDelta) {
+    try {
+      const delta = JSON.parse(item.contentDelta);
+      if (!delta || !Array.isArray(delta.ops)) throw Error("invalid delta");
+      viewer.setContents(delta);
+      return;
+    } catch (_) {}
+  }
+  viewer.setText(item.contentHtml || item.body || "");
 }
