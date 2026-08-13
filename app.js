@@ -137,6 +137,10 @@
     currentElection =
       data.election || {};
 
+    if (currentElection.electionId) {
+      currentElectionId = String(currentElection.electionId);
+    }
+
     currentOptions =
       data.options || [];
 
