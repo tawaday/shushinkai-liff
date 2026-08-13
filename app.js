@@ -18,6 +18,7 @@
     COMPLETE: "completeView",
     ALREADY: "alreadyVotedView",
     CLOSED: "closedView",
+    NONE: "noElectionView",
     INELIGIBLE: "ineligibleView",
     ERROR: "errorView"
   };
@@ -116,6 +117,12 @@
         return;
       }
 
+      if (isNoElectionResponse_(response)) {
+        showView_(ELECTION_VIEW.NONE);
+        window.scrollTo(0, 0);
+        return;
+      }
+
       showError_(
         response && response.error
           ? response.error
@@ -179,6 +186,11 @@
         showView_(ELECTION_VIEW.VOTE);
         break;
 
+      case "none":
+      case "unavailable":
+        showView_(ELECTION_VIEW.NONE);
+        break;
+
       default:
         showError_(
           "選挙の状態を確認できませんでした。"
@@ -186,6 +198,13 @@
     }
 
     window.scrollTo(0, 0);
+  }
+
+  function isNoElectionResponse_(response) {
+    if (response && response.noElection === true) return true;
+    const message = String(response && response.error || "").trim();
+    return /選挙.*(?:見つかりません|登録されていません|公開されていません|行われていません)/.test(message)
+      || /公開.*選挙.*(?:ありません|見つかりません)/.test(message);
   }
 
 
