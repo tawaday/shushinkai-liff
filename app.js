@@ -203,7 +203,7 @@
   function isNoElectionResponse_(response) {
     if (response && response.noElection === true) return true;
     const message = String(response && response.error || "").trim();
-    return /選挙.*(?:見つかりません|登録されていません|公開されていません|行われていません)/.test(message)
+    return /選挙(?:情報)?.*(?:見つかりません|登録されていません|公開されていません|行われていません)/.test(message)
       || /公開.*選挙.*(?:ありません|見つかりません)/.test(message);
   }
 
