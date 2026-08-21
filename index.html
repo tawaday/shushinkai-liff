@@ -24,6 +24,39 @@
     <a id="applicationLink" class="subLink hidden">会員登録申請がまだの方はこちら</a>
   </section>
   <section id="confirm" class="card hidden"><h1>登録内容の確認</h1><p id="confirmText"></p><button id="confirmButton" class="button">この内容で登録する</button></section>
+  <section id="inquiry" class="card hidden">
+    <h1>ご意見・情報提供</h1>
+    <p class="formLead">宗心会の運営へのご意見・ご提案、資料や写真などの情報をお寄せください。会員情報はLINE認証から取得します。</p>
+    <form id="inquiryForm">
+      <label for="inquiryCategory">ご用件の種類</label>
+      <select id="inquiryCategory" required>
+        <option value="">選択してください</option>
+        <option>選挙についての質問・意見</option>
+        <option>宗心会運営についての質問・意見</option>
+        <option>提案・要望</option>
+        <option>資料・写真・情報の提供</option>
+        <option>その他のお問い合わせ</option>
+      </select>
+      <label for="inquirySubject">件名</label>
+      <input id="inquirySubject" maxlength="100" required placeholder="内容が分かる短い件名">
+      <label for="inquiryBody">本文</label>
+      <textarea id="inquiryBody" maxlength="5000" required rows="8" placeholder="できるだけ具体的にご記入ください"></textarea>
+      <fieldset><legend>回答を希望しますか</legend>
+        <label class="radioLabel"><input type="radio" name="responseRequested" value="true" required> 希望する</label>
+        <label class="radioLabel"><input type="radio" name="responseRequested" value="false"> 希望しない</label>
+      </fieldset>
+      <label for="inquiryAttachment">添付ファイル（任意）</label>
+      <input id="inquiryAttachment" type="file" accept="application/pdf,image/jpeg,image/png">
+      <p class="hint">PDF・JPEG・PNG、10MBまで</p>
+      <button id="inquirySubmit" class="button" type="submit">送信する</button>
+      <p id="inquiryError" class="error" role="alert"></p>
+    </form>
+  </section>
+  <section id="inquiryComplete" class="card statusCard hidden">
+    <div class="statusIcon" aria-hidden="true">✓</div><p class="statusEyebrow">受付完了</p>
+    <h1>ありがとうございました</h1><p class="statusLead">ご意見・情報を受け付けました。</p>
+    <dl class="memberSummary"><div><dt>受付番号</dt><dd id="inquiryId"></dd></div><div><dt>受付日時</dt><dd id="inquiryCreatedAt"></dd></div></dl>
+  </section>
   <section id="news" class="hidden">
     <div id="newsList"></div>
     <article id="newsArticle" class="card newsArticle hidden">
@@ -31,4 +64,4 @@
       <div id="newsContent" class="newsContent"></div>
     </article>
   </section>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20260813-operations-1"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20260821-inquiry-1"></script></body></html>

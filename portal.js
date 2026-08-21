@@ -6,7 +6,7 @@ const PORTAL = {
 let idToken = "";
 let confirmationToken = "";
 const $ = id => document.getElementById(id);
-const screenIds = ["loading", "message", "registered", "register", "confirm", "news"];
+const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "news"];
 const show = id => screenIds.forEach(x => $(x).classList.toggle("hidden", x !== id));
 
 const launchParams = (() => {
@@ -130,6 +130,10 @@ function handleResolve(result) {
     message("メニューを送りました", "宗心会公式LINEの個別トークに、お問い合わせメニューを送りました。LINEへ戻ってご確認ください。");
     return;
   }
+  if (result.view === "inquiry") {
+    show("inquiry");
+    return;
+  }
   message("ようこそ", `${result.memberName || "会員"} 様`);
 }
 
@@ -195,6 +199,59 @@ $("confirmButton").onclick = async () => {
     button.disabled = false;
   }
 };
+
+$("inquiryForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = $("inquirySubmit");
+  const errorBox = $("inquiryError");
+  try {
+    errorBox.textContent = "";
+    button.disabled = true;
+    button.textContent = "送信しています…";
+    const file = $("inquiryAttachment").files[0];
+    if (file && file.size > 10 * 1024 * 1024) throw Error("添付ファイルは10MB以下にしてください。");
+    const attachment = file ? await fileAsBase64_(file) : null;
+    const responseChoice = document.querySelector('input[name="responseRequested"]:checked');
+    const result = await apiJson({
+      api:"1", fn:"inquirySubmit", idToken,
+      inquiry:{
+        category:$("inquiryCategory").value,
+        subject:$("inquirySubject").value,
+        body:$("inquiryBody").value,
+        responseRequested:responseChoice && responseChoice.value === "true",
+        attachment:attachment
+      }
+    });
+    if (!result.ok) throw Error(result.error || "送信できませんでした。");
+    $("inquiryId").textContent = result.inquiryId;
+    $("inquiryCreatedAt").textContent = result.createdAt;
+    show("inquiryComplete");
+    window.scrollTo(0, 0);
+  } catch (error) {
+    errorBox.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "送信する";
+  }
+});
+
+function fileAsBase64_(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ fileName:file.name, mimeType:file.type, base64:String(reader.result || "").split(",")[1] || "" });
+    reader.onerror = () => reject(Error("添付ファイルを読み取れませんでした。"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function apiJson(data) {
+  const response = await fetch(PORTAL.GAS_API_URL, {
+    method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body:JSON.stringify(data), cache:"no-store", redirect:"follow"
+  });
+  if (!response.ok) throw Error("通信エラー（HTTP " + response.status + "）");
+  return response.json();
+}
 
 async function api(data) {
   const body = new URLSearchParams(data);
