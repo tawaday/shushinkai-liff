@@ -93,4 +93,20 @@
       <div id="newsContent" class="newsContent"></div>
     </article>
   </section>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20260821-inquiry-response-1"></script></body></html>
+  <div id="responseConfirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="responseConfirmTitle">
+    <div class="modalCard">
+      <p class="statusEyebrow">送信前の最終確認</p>
+      <h1 id="responseConfirmTitle">この回答を送信しますか？</h1>
+      <dl class="confirmSummary">
+        <div><dt>投稿者</dt><dd id="confirmRecipient"></dd></div>
+        <div><dt>件名</dt><dd id="confirmSubject"></dd></div>
+        <div><dt>回答文</dt><dd id="confirmResponseText"></dd></div>
+      </dl>
+      <p class="warningText">送信すると、投稿者の個別LINEへ直ちに届きます。</p>
+      <div class="adminActions">
+        <button id="responseConfirmCancel" class="button secondaryButton" type="button">戻って修正</button>
+        <button id="responseConfirmSend" class="button" type="button">この内容で送信</button>
+      </div>
+    </div>
+  </div>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20260821-inquiry-confirm-1"></script></body></html>

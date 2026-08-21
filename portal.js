@@ -287,7 +287,6 @@ async function submitInquiryAdminAction_(fn) {
     errorBox.textContent = "";
     $("adminStatusMessage").textContent = "";
     if (isSend && !$("adminResponseText").value.trim()) throw Error("回答文を入力してください。");
-    if (isSend && !window.confirm("この回答を投稿者の個別LINEへ送信します。よろしいですか？")) return;
     button.disabled = true;
     otherButton.disabled = true;
     button.textContent = isSend ? "送信しています…" : "保存しています…";
@@ -314,7 +313,23 @@ async function submitInquiryAdminAction_(fn) {
 }
 
 $("adminSave").onclick = () => submitInquiryAdminAction_("inquirySave");
-$("adminSend").onclick = () => submitInquiryAdminAction_("inquiryRespond");
+$("adminSend").onclick = () => {
+  const responseText = $("adminResponseText").value.trim();
+  if (!responseText) {
+    $("adminError").textContent = "回答文を入力してください。";
+    return;
+  }
+  $("adminError").textContent = "";
+  $("confirmRecipient").textContent = $("adminMember").textContent;
+  $("confirmSubject").textContent = $("adminSubject").textContent;
+  $("confirmResponseText").textContent = responseText;
+  $("responseConfirmModal").classList.remove("hidden");
+};
+$("responseConfirmCancel").onclick = () => $("responseConfirmModal").classList.add("hidden");
+$("responseConfirmSend").onclick = async () => {
+  $("responseConfirmModal").classList.add("hidden");
+  await submitInquiryAdminAction_("inquiryRespond");
+};
 
 async function api(data) {
   const body = new URLSearchParams(data);
