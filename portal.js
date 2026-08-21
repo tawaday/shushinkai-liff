@@ -6,7 +6,7 @@ const PORTAL = {
 let idToken = "";
 let confirmationToken = "";
 const $ = id => document.getElementById(id);
-const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "news"];
+const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news"];
 const show = id => screenIds.forEach(x => $(x).classList.toggle("hidden", x !== id));
 
 const launchParams = (() => {
@@ -134,6 +134,10 @@ function handleResolve(result) {
     show("inquiry");
     return;
   }
+  if (result.view === "inquiryAdmin") {
+    renderInquiryAdmin_(result);
+    return;
+  }
   message("ようこそ", `${result.memberName || "会員"} 様`);
 }
 
@@ -252,6 +256,65 @@ async function apiJson(data) {
   if (!response.ok) throw Error("通信エラー（HTTP " + response.status + "）");
   return response.json();
 }
+
+function renderInquiryAdmin_(result) {
+  const inquiry = result.inquiry || {};
+  $("adminInquiryId").textContent = inquiry.inquiryId || "";
+  $("adminCreatedAt").textContent = inquiry.createdAt || "";
+  $("adminMember").textContent = (inquiry.name || "") + (inquiry.memberId ? "（" + inquiry.memberId + "）" : "");
+  $("adminCategory").textContent = inquiry.category || "";
+  $("adminSubject").textContent = inquiry.subject || "";
+  $("adminBody").textContent = inquiry.body || "";
+  $("adminResponseRequested").textContent = inquiry.responseRequested ? "希望する" : "希望しない";
+  $("adminAssignedTo").value = inquiry.assignedTo || (result.operator && result.operator.name || "");
+  $("adminStatus").value = inquiry.status || "受付中";
+  $("adminResponseText").value = inquiry.responseText || "";
+  const attachment = $("adminAttachment");
+  attachment.classList.toggle("hidden", !inquiry.attachmentUrl);
+  if (inquiry.attachmentUrl) attachment.href = inquiry.attachmentUrl;
+  $("adminStatusMessage").textContent = inquiry.responseSentAt
+    ? "回答送信済み：" + inquiry.responseSentAt
+    : "";
+  show("inquiryAdmin");
+}
+
+async function submitInquiryAdminAction_(fn) {
+  const isSend = fn === "inquiryRespond";
+  const button = isSend ? $("adminSend") : $("adminSave");
+  const otherButton = isSend ? $("adminSave") : $("adminSend");
+  const errorBox = $("adminError");
+  try {
+    errorBox.textContent = "";
+    $("adminStatusMessage").textContent = "";
+    if (isSend && !$("adminResponseText").value.trim()) throw Error("回答文を入力してください。");
+    if (isSend && !window.confirm("この回答を投稿者の個別LINEへ送信します。よろしいですか？")) return;
+    button.disabled = true;
+    otherButton.disabled = true;
+    button.textContent = isSend ? "送信しています…" : "保存しています…";
+    const result = await apiJson({
+      api:"1", fn:fn, idToken, inquiryId:launchParams.id,
+      input:{
+        assignedTo:$("adminAssignedTo").value,
+        status:$("adminStatus").value,
+        responseText:$("adminResponseText").value
+      }
+    });
+    if (!result.ok) throw Error(result.error || "処理できませんでした。");
+    renderInquiryAdmin_({inquiry:result.inquiry});
+    $("adminStatusMessage").textContent = isSend
+      ? "投稿者へ回答を送信しました。"
+      : "下書きを保存しました。";
+  } catch (error) {
+    errorBox.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    otherButton.disabled = false;
+    button.textContent = isSend ? "投稿者へ回答を送信" : "下書き保存";
+  }
+}
+
+$("adminSave").onclick = () => submitInquiryAdminAction_("inquirySave");
+$("adminSend").onclick = () => submitInquiryAdminAction_("inquiryRespond");
 
 async function api(data) {
   const body = new URLSearchParams(data);

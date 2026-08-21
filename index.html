@@ -57,6 +57,35 @@
     <h1>ありがとうございました</h1><p class="statusLead">ご意見・情報を受け付けました。</p>
     <dl class="memberSummary"><div><dt>受付番号</dt><dd id="inquiryId"></dd></div><div><dt>受付日時</dt><dd id="inquiryCreatedAt"></dd></div></dl>
   </section>
+  <section id="inquiryAdmin" class="card hidden">
+    <p class="statusEyebrow">役員用</p><h1>問い合わせ詳細・回答</h1>
+    <dl class="inquiryDetail">
+      <div><dt>受付番号</dt><dd id="adminInquiryId"></dd></div>
+      <div><dt>受付日時</dt><dd id="adminCreatedAt"></dd></div>
+      <div><dt>投稿者</dt><dd id="adminMember"></dd></div>
+      <div><dt>カテゴリ</dt><dd id="adminCategory"></dd></div>
+      <div><dt>件名</dt><dd id="adminSubject"></dd></div>
+      <div><dt>本文</dt><dd id="adminBody"></dd></div>
+      <div><dt>回答希望</dt><dd id="adminResponseRequested"></dd></div>
+    </dl>
+    <a id="adminAttachment" class="button secondaryButton hidden" target="_blank" rel="noopener">添付ファイルを開く</a>
+    <form id="inquiryAdminForm">
+      <label for="adminAssignedTo">担当者</label>
+      <input id="adminAssignedTo" maxlength="100" placeholder="例：事務局 多和田">
+      <label for="adminStatus">対応状況</label>
+      <select id="adminStatus" required>
+        <option>受付中</option><option>役員共有済</option><option>対応中</option><option>回答済</option><option>保管</option>
+      </select>
+      <label for="adminResponseText">回答文</label>
+      <textarea id="adminResponseText" maxlength="5000" rows="8" placeholder="投稿者へ送る回答を入力してください"></textarea>
+      <div class="adminActions">
+        <button id="adminSave" class="button secondaryButton" type="button">下書き保存</button>
+        <button id="adminSend" class="button" type="button">投稿者へ回答を送信</button>
+      </div>
+      <p id="adminStatusMessage" class="formStatus" role="status"></p>
+      <p id="adminError" class="error" role="alert"></p>
+    </form>
+  </section>
   <section id="news" class="hidden">
     <div id="newsList"></div>
     <article id="newsArticle" class="card newsArticle hidden">
@@ -64,4 +93,4 @@
       <div id="newsContent" class="newsContent"></div>
     </article>
   </section>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20260821-inquiry-1"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20260821-inquiry-response-1"></script></body></html>
