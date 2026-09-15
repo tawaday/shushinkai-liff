@@ -24,6 +24,7 @@ const launchParams = (() => {
   }
   return {
     view: params.get("view") || nested.get("view") || saved.view || "home",
+    preview: (params.get("preview") || nested.get("preview") || saved.preview || "") === "1" ? "1" : "",
     election: params.get("election") || nested.get("election") || saved.election || "chairman_2026",
     id: params.get("id") || nested.get("id") || saved.id || "",
     newsToken: params.get("nt") || nested.get("nt") || saved.newsToken || ""
@@ -91,6 +92,7 @@ function restartLineLogin_() {
 function saveLaunchParamsForLogin_() {
   sessionStorage.setItem("shushinkai_liff_launch_params", JSON.stringify({
     view:launchParams.view,
+    preview:launchParams.preview,
     election:launchParams.election,
     id:launchParams.id,
     newsToken:launchParams.newsToken
@@ -118,7 +120,7 @@ function handleResolve(result) {
     return;
   }
   if (result.view === "vote") {
-    location.replace("election.html?election=" + encodeURIComponent(launchParams.election));
+    location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
     return;
   }
   if (result.view === "news") {

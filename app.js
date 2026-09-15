@@ -311,7 +311,7 @@
 
   function buildLiffElectionUrl_() {
     return ELECTION_CLIENT_CONFIG.LIFF_URL +
-      "?election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&preview=1" : "");
+      "?election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&view=vote&preview=1" : "");
   }
 
   function showAuthenticationError_(message) {
