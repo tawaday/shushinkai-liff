@@ -12,6 +12,7 @@
   const ELECTION_VIEW = {
     LOADING: "loadingView",
     BEFORE: "beforeView",
+    PAUSED: "pausedView",
     VOTE: "voteView",
     CONFIRM: "confirmView",
     SENDING: "sendingView",
@@ -106,6 +107,14 @@
     if (pageStateRequestTimer) {
       clearTimeout(pageStateRequestTimer);
       pageStateRequestTimer = null;
+    }
+
+    if (response && (response.state === "paused" || response.noElection === true || response.state === "none")) {
+      clearElectionDisplay_();
+      if (response.state === "paused") showView_(ELECTION_VIEW.PAUSED);
+      else if (ELECTION_VIEW.NONE) showView_(ELECTION_VIEW.NONE);
+      else showError_("現在、公開されている選挙はありません。");
+      return;
     }
 
     if (!response || response.ok !== true) {
@@ -304,36 +313,66 @@
   // ===================================================
 
   function renderBeforeView_() {
-    const startAt =
-      String(
-        currentElection.startAt || ""
-      ).trim();
+    const election = currentElection || {};
+    setText_("announcementTitle", election.title || "電子投票");
+    setText_("announcementDescription", election.description || "");
+    setText_("announcementVoteType", { confidence: "信任投票", candidate: "候補者選挙" }[election.voteType] || election.voteType || "未設定");
+    setText_("beforePeriodText", [election.startAt, election.endAt].filter(Boolean).join(" ～ "));
+    setText_("announcementRule", election.resultRule || "未設定");
+    setText_("announcementResults", election.isResultPublic === true ? "公開する" : "公開しない");
+    setText_("beforeMessage", election.startAt ? "投票は" + election.startAt + "から開始します。" : "投票開始までお待ちください。");
+    const list = document.getElementById("announcementCandidates");
+    list.textContent = "";
+    const candidates = currentConfidenceCandidate ? [currentConfidenceCandidate] : currentOptions;
+    candidates.forEach(function(candidate) {
+      const card = document.createElement("article");
+      card.className = "card announcementCandidate";
+      const name = candidate.name || candidate.candidateName || candidate.label || "";
+      const heading = document.createElement("h3");
+      heading.className = "confidenceCandidateName";
+      heading.textContent = name;
+      card.appendChild(heading);
+      const photo = String(candidate.photoUrl || "").trim();
+      if (/^https:\/\//i.test(photo) || /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo)) {
+        const image = document.createElement("img");
+        image.className = "announcementPhoto";
+        image.src = photo;
+        image.alt = name + "の候補者写真";
+        image.onerror = function() { image.remove(); };
+        card.appendChild(image);
+      }
+      [["所属道院", candidate.dojo], ["武法階等", candidate.rank],
+       ["立候補・推薦の区分", candidate.nominationType], ["プロフィール・経歴", candidate.profile],
+       ["推薦文", candidate.recommendation], ["所信", candidate.statement], ["公約", candidate.manifesto]]
+        .forEach(function(item) {
+          if (!String(item[1] || "").trim()) return;
+          const title = document.createElement("h4");
+          title.textContent = item[0];
+          const text = document.createElement("p");
+          text.textContent = item[1];
+          card.appendChild(title);
+          card.appendChild(text);
+        });
+      list.appendChild(card);
+    });
+    if (typeof renderWithdrawnCandidates_ === "function") renderWithdrawnCandidates_("beforeWithdrawnCandidates");
+  }
 
-    const endAt =
-      String(
-        currentElection.endAt || ""
-      ).trim();
-
-    if (startAt) {
-      setText_(
-        "beforeMessage",
-        startAt +
-          "より投票を開始します。"
-      );
-    } else {
-      setText_(
-        "beforeMessage",
-        "投票開始までお待ちください。"
-      );
-    }
-
-    renderStatePeriod_(
-      "beforePeriodBox",
-      "beforePeriodText",
-      startAt,
-      endAt
-    );
-    renderWithdrawnCandidates_("beforeWithdrawnCandidates");
+  function clearElectionDisplay_() {
+    currentElection = null;
+    currentOptions = [];
+    currentConfidenceCandidate = null;
+    selectedOptionId = "";
+    if (typeof currentWithdrawnCandidates !== "undefined") currentWithdrawnCandidates = [];
+    document.getElementById("announcementCandidates").textContent = "";
+    document.getElementById("optionList").textContent = "";
+    ["beforeView", "voteView", "confirmView", "closedView", "alreadyVotedView"].forEach(function(id) {
+      const view = document.getElementById(id);
+      view.querySelectorAll("[id]").forEach(function(element) {
+        if (element.tagName === "IMG") { element.removeAttribute("src"); element.classList.add("hidden"); }
+        else if (!element.children.length && !["BUTTON", "INPUT"].includes(element.tagName)) element.textContent = "";
+      });
+    });
   }
 
 
@@ -1084,7 +1123,14 @@
   // 共通画面制御
   // ===================================================
 
+  let publicationRefreshTimer = null;
+
   function showView_(viewId) {
+    if (publicationRefreshTimer) clearTimeout(publicationRefreshTimer);
+    publicationRefreshTimer = null;
+    if (viewId === ELECTION_VIEW.BEFORE || viewId === ELECTION_VIEW.PAUSED) {
+      publicationRefreshTimer = setTimeout(loadElectionPageState, 60000);
+    }
     const views =
       document.querySelectorAll(
         ".view"

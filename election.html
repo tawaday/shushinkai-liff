@@ -15,7 +15,7 @@
     src="https://static.line-scdn.net/liff/edge/2/sdk.js">
   </script>
 
-  <link rel="stylesheet" href="./election.css?v=37">
+  <link rel="stylesheet" href="./election.css?v=20260915-announcement">
 </head>
 
 <body>
@@ -54,30 +54,29 @@
          投票開始前
     ========================================== -->
     <section id="beforeView" class="view hidden">
-
-      <div class="card completeCard">
-
-        <div class="resultIcon waitingIcon">◷</div>
-
-        <h1 class="resultTitle">
-          投票開始前です
-        </h1>
-
-        <p id="beforeMessage" class="resultMessage">
-          投票開始までお待ちください。
-        </p>
-
-        <div
-          id="beforePeriodBox"
-          class="privacyMessage hidden"
-        >
-          <div class="statePeriodLabel">投票期間</div>
-          <div id="beforePeriodText"></div>
-        </div>
-        <div id="beforeWithdrawnCandidates" class="withdrawnCandidates hidden"></div>
-
+      <div class="card electionCard announcementCard">
+        <div class="statusBadge">公示中</div>
+        <h1 id="announcementTitle" class="electionTitle"></h1>
+        <p id="announcementDescription" class="electionDescription"></p>
+        <dl class="announcementFacts">
+          <dt>投票方式</dt><dd id="announcementVoteType"></dd>
+          <dt>投票期間（日本時間）</dt><dd id="beforePeriodText"></dd>
+          <dt>決定条件</dt><dd id="announcementRule"></dd>
+          <dt>結果公開設定</dt><dd id="announcementResults"></dd>
+        </dl>
+        <p id="beforeMessage" class="announcementStart" role="status"></p>
       </div>
-
+      <h2 class="announcementHeading">候補者情報</h2>
+      <div id="announcementCandidates"></div>
+      <div id="beforeWithdrawnCandidates" class="withdrawnCandidates hidden"></div>
+      <button type="button" class="button secondaryButton" onclick="loadElectionPageState()">最新の公開状態を確認する</button>
+    </section>
+    <section id="pausedView" class="view hidden">
+      <div class="card completeCard">
+        <h1 class="resultTitle">公開を一時停止しています</h1>
+        <p class="resultMessage">現在、この選挙の公開を一時停止しています。再公開までお待ちください。</p>
+        <button type="button" class="button secondaryButton" onclick="loadElectionPageState()">公開状態を確認する</button>
+      </div>
     </section>
 
 
@@ -434,7 +433,7 @@
 
   </main>
 
-  <script src="./app.js?v=36"></script>
+  <script src="./app.js?v=20260915-announcement"></script>
 
 </body>
 </html>

@@ -957,3 +957,15 @@
     line-height: 1.85;
     white-space: pre-wrap;
   }
+
+/* Read-only candidate announcement, including narrow LINE browser screens. */
+.announcementFacts { margin: 24px 0; text-align: left; }
+.announcementFacts dt { font-size: 13px; font-weight: 700; color: #5c6575; margin-top: 16px; }
+.announcementFacts dd { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.announcementStart { padding: 16px; border-radius: 12px; background: #eef5ff; color: #173b70; font-weight: 700; overflow-wrap: anywhere; }
+.announcementHeading { font-size: 20px; margin: 26px 4px 14px; }
+.announcementCandidate { text-align: left; overflow-wrap: anywhere; }
+.announcementCandidate h4 { margin: 22px 0 6px; font-size: 14px; color: #5c6575; }
+.announcementCandidate p { margin: 0; white-space: pre-wrap; line-height: 1.8; }
+.announcementPhoto { display: block; width: 160px; max-width: 100%; max-height: 220px; object-fit: contain; object-position: left; border-radius: 12px; margin-top: 16px; }
+.announcementCard .electionDescription { white-space: pre-wrap; overflow-wrap: anywhere; }
