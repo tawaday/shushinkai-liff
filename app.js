@@ -9,6 +9,33 @@
     GAS_API_URL: "https://script.google.com/macros/s/AKfycbyYfVwfTY6p-2O0jBhWEeUVGLYtihMuSB0EdmO1bIByEK_hgh0fSb4IDBkJ151SElc/exec"
   };
 
+
+  // Immutable for this page lifetime; authentication never decides whether a test becomes a real vote.
+  const IS_ELECTION_PREVIEW = window.INITIAL_ELECTION_PREVIEW === true ||
+    new URLSearchParams(window.location.search).get("preview") === "1";
+
+  function initializePreviewUI_() {
+    if (!IS_ELECTION_PREVIEW) return;
+    document.getElementById("previewBanner").classList.remove("hidden");
+    setText_("submitButton", "テスト完了");
+    document.querySelector("#confirmView .confirmTitle").textContent = "この内容でテストを完了します";
+    document.querySelector("#confirmView .finalWarning").textContent = "プレビューのため投票は記録されません。";
+    document.querySelector("#completeView .resultTitle").textContent = "プレビュー完了";
+    document.querySelector("#completeView .resultMessage").textContent = "プレビューのため投票は記録されません。";
+    document.querySelector("#completeView .privacyMessage").textContent = "投票状況は変更されていません。上部の終了ボタンから戻れます。";
+    document.querySelector("#sendingView .loadingText").textContent = "テスト内容を確認しています";
+  }
+
+  function handlePreviewComplete_(response) {
+    setSubmittingState_(false);
+    if (!response || response.ok !== true || response.preview !== true || response.recorded !== false) {
+      showError_(response && response.error || "プレビューを完了できませんでした。");
+      return;
+    }
+    showView_(ELECTION_VIEW.COMPLETE);
+    window.scrollTo(0, 0);
+  }
+
   const ELECTION_VIEW = {
     LOADING: "loadingView",
     BEFORE: "beforeView",
@@ -47,6 +74,7 @@
   // ===================================================
 
   function initializeElectionPage() {
+    initializePreviewUI_();
     currentElectionId =
       getElectionIdFromUrl_() ||
       ELECTION_CLIENT_CONFIG.DEFAULT_ELECTION_ID;
@@ -97,7 +125,7 @@
       idToken: currentIdToken
     };
 
-    callElectionApi_("getPageState", params)
+    callElectionApi_(IS_ELECTION_PREVIEW ? "getPreviewState" : "getPageState", params)
       .then(handlePageStateLoaded_)
       .catch(handleServerFailure_);
   }
@@ -137,6 +165,11 @@
           ? response.error
           : "選挙情報を読み込めませんでした。"
       );
+      return;
+    }
+
+    if (IS_ELECTION_PREVIEW && response.preview !== true) {
+      showError_("プレビューを確認できません。選挙管理から開き直してください。");
       return;
     }
 
@@ -278,7 +311,7 @@
 
   function buildLiffElectionUrl_() {
     return ELECTION_CLIENT_CONFIG.LIFF_URL +
-      "?election=" + encodeURIComponent(currentElectionId);
+      "?election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&preview=1" : "");
   }
 
   function showAuthenticationError_(message) {
@@ -573,7 +606,7 @@
       );
 
     badge.classList.remove("closed");
-    badge.textContent = "投票受付中";
+    badge.textContent = IS_ELECTION_PREVIEW ? "管理者プレビュー" : "投票受付中";
   }
 
 
@@ -891,6 +924,11 @@
       idToken: currentIdToken
     };
 
+    if (IS_ELECTION_PREVIEW) {
+      callElectionApi_("completePreview", params).then(handlePreviewComplete_).catch(handleVoteFailure_);
+      return;
+    }
+
     callElectionApi_("castVote", params)
       .then(handleVoteResult_)
       .catch(handleVoteFailure_);
@@ -1066,6 +1104,7 @@
       action: action,
       electionId: String(params.electionId || ""),
       optionId: String(params.optionId || ""),
+      preview: IS_ELECTION_PREVIEW ? "1" : "",
       idToken: String(params.idToken || "")
     });
 
