@@ -15,7 +15,7 @@
     src="https://static.line-scdn.net/liff/edge/2/sdk.js">
   </script>
 
-  <link rel="stylesheet" href="./election.css?v=20260915-announcement">
+  <link rel="stylesheet" href="./election.css?v=20260915-vote-candidates">
 </head>
 
 <body>
@@ -203,50 +203,13 @@
 
       </div>
 
-      <!-- 候補者が1名の場合の候補者表示 -->
-      <div
-        id="confidenceCandidateCard"
-        class="card confidenceCandidateCard hidden"
-      >
-        <div class="confidenceCandidateLabel">
-          次期会長候補者
-        </div>
-        <div class="confidenceCandidateIdentity">
-          <img id="confidenceCandidatePhoto" class="confidenceCandidatePhoto hidden" alt="候補者写真">
-          <div>
-            <div
-              id="confidenceCandidateName"
-              class="confidenceCandidateName"
-            ></div>
-            <div id="confidenceCandidateMeta" class="candidateMeta hidden"></div>
-          </div>
-        </div>
+      <section aria-labelledby="voteCandidatesTitle">
+        <h2 id="voteCandidatesTitle" class="noticeTitle">候補者一覧</h2>
+        <p class="voteCandidateHelp">候補者の詳細を確認してから、投票内容を選択してください。</p>
+        <div id="voteCandidates"></div>
+      </section>
+      <h2 class="noticeTitle">投票内容を選択</h2>
 
-        <button
-          id="confidenceCandidateDetailsButton"
-          type="button"
-          class="candidateDetailsButton hidden"
-          aria-expanded="false"
-          aria-controls="confidenceCandidateDetails"
-        >プロフィール・所信・公約を見る</button>
-
-        <div id="confidenceCandidateDetails" class="candidateDetails hidden">
-          <div
-            id="confidenceCandidateProfile"
-            class="confidenceCandidateProfile hidden"
-          ></div>
-
-          <div
-            id="confidenceCandidateStatement"
-            class="confidenceCandidateStatement hidden"
-          ></div>
-          <div
-            id="confidenceCandidateManifesto"
-            class="candidateManifesto hidden"
-          ></div>
-        </div>
-      </div>
-      
       <!-- 候補者・選択肢 -->
       <div id="optionList" class="optionList"></div>
       <div id="voteWithdrawnCandidates" class="withdrawnCandidates hidden"></div>
@@ -433,7 +396,7 @@
 
   </main>
 
-  <script src="./app.js?v=20260915-announcement"></script>
+  <script src="./app.js?v=20260915-vote-candidates"></script>
 
 </body>
 </html>

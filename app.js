@@ -312,21 +312,12 @@
   // 開始前・終了画面
   // ===================================================
 
-  function renderBeforeView_() {
-    const election = currentElection || {};
-    setText_("announcementTitle", election.title || "電子投票");
-    setText_("announcementDescription", election.description || "");
-    setText_("announcementVoteType", { confidence: "信任投票", candidate: "候補者選挙" }[election.voteType] || election.voteType || "未設定");
-    setText_("beforePeriodText", [election.startAt, election.endAt].filter(Boolean).join(" ～ "));
-    setText_("announcementRule", election.resultRule || "未設定");
-    setText_("announcementResults", election.isResultPublic === true ? "公開する" : "公開しない");
-    setText_("beforeMessage", election.startAt ? "投票は" + election.startAt + "から開始します。" : "投票開始までお待ちください。");
-    const list = document.getElementById("announcementCandidates");
-    list.textContent = "";
-    const candidates = currentConfidenceCandidate ? [currentConfidenceCandidate] : currentOptions;
-    candidates.forEach(function(candidate) {
-      const card = document.createElement("article");
-      card.className = "card announcementCandidate";
+  // Both views use the same public payload and explicit display field allowlist.
+  function publicCandidates_() {
+    return currentConfidenceCandidate ? [currentConfidenceCandidate] : currentOptions;
+  }
+
+  function appendPublicCandidate_(card, candidate) {
       const name = candidate.name || candidate.candidateName || candidate.label || "";
       const heading = document.createElement("h3");
       heading.className = "confidenceCandidateName";
@@ -353,6 +344,55 @@
           card.appendChild(title);
           card.appendChild(text);
         });
+  }
+
+  function renderVoteCandidates_() {
+    const list = document.getElementById("voteCandidates");
+    list.textContent = "";
+    publicCandidates_().forEach(function(candidate, index) {
+      const card = document.createElement("article");
+      card.className = "card announcementCandidate voteCandidate";
+      appendPublicCandidate_(card, candidate);
+      const heading = card.firstElementChild;
+      const panel = document.createElement("div");
+      panel.id = "voteCandidateDetails-" + index;
+      panel.className = "hidden";
+      while (heading.nextSibling) panel.appendChild(heading.nextSibling);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "candidateDetailsButton";
+      button.textContent = "詳細を見る";
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-controls", panel.id);
+      button.setAttribute("aria-label", (candidate.name || candidate.candidateName || candidate.label || "候補者") + "の詳細を見る");
+      button.addEventListener("click", function() {
+        const opening = panel.classList.contains("hidden");
+        panel.classList.toggle("hidden", !opening);
+        button.setAttribute("aria-expanded", String(opening));
+        button.textContent = opening ? "詳細を閉じる" : "詳細を見る";
+        button.setAttribute("aria-label", heading.textContent + (opening ? "の詳細を閉じる" : "の詳細を見る"));
+      });
+      card.appendChild(button);
+      card.appendChild(panel);
+      list.appendChild(card);
+    });
+  }
+
+  function renderBeforeView_() {
+    const election = currentElection || {};
+    setText_("announcementTitle", election.title || "電子投票");
+    setText_("announcementDescription", election.description || "");
+    setText_("announcementVoteType", { confidence: "信任投票", candidate: "候補者選挙" }[election.voteType] || election.voteType || "未設定");
+    setText_("beforePeriodText", [election.startAt, election.endAt].filter(Boolean).join(" ～ "));
+    setText_("announcementRule", election.resultRule || "未設定");
+    setText_("announcementResults", election.isResultPublic === true ? "公開する" : "公開しない");
+    setText_("beforeMessage", election.startAt ? "投票は" + election.startAt + "から開始します。" : "投票開始までお待ちください。");
+    const list = document.getElementById("announcementCandidates");
+    list.textContent = "";
+    publicCandidates_().forEach(function(candidate) {
+      const card = document.createElement("article");
+      card.className = "card announcementCandidate";
+      appendPublicCandidate_(card, candidate);
       list.appendChild(card);
     });
     if (typeof renderWithdrawnCandidates_ === "function") renderWithdrawnCandidates_("beforeWithdrawnCandidates");
@@ -365,6 +405,7 @@
     selectedOptionId = "";
     if (typeof currentWithdrawnCandidates !== "undefined") currentWithdrawnCandidates = [];
     document.getElementById("announcementCandidates").textContent = "";
+    document.getElementById("voteCandidates").textContent = "";
     document.getElementById("optionList").textContent = "";
     ["beforeView", "voteView", "confirmView", "closedView", "alreadyVotedView"].forEach(function(id) {
       const view = document.getElementById(id);
@@ -443,7 +484,7 @@
     renderElectionPeriod_();
     renderResultRule_();
     renderStatusBadge_();
-    renderConfidenceCandidate_();
+    renderVoteCandidates_();
     renderOptions_();
     renderWithdrawnCandidates_("voteWithdrawnCandidates");
 
@@ -533,85 +574,6 @@
 
     badge.classList.remove("closed");
     badge.textContent = "投票受付中";
-  }
-
-
-  function renderConfidenceCandidate_() {
-    const card =
-      document.getElementById(
-        "confidenceCandidateCard"
-      );
-
-    if (!currentConfidenceCandidate) {
-      card.classList.add("hidden");
-      return;
-    }
-
-    setText_(
-      "confidenceCandidateName",
-      currentConfidenceCandidate.name || ""
-    );
-
-    renderCandidatePhoto_(
-      "confidenceCandidatePhoto",
-      currentConfidenceCandidate.photoUrl
-    );
-
-    renderCandidateMeta_(
-      "confidenceCandidateMeta",
-      currentConfidenceCandidate
-    );
-
-    renderCandidateDetailText_(
-      "confidenceCandidateProfile",
-      "プロフィール",
-      currentConfidenceCandidate.profile
-    );
-
-    renderCandidateDetailText_(
-      "confidenceCandidateStatement",
-      "所信",
-      currentConfidenceCandidate.statement
-    );
-
-    renderCandidateDetailText_(
-      "confidenceCandidateManifesto",
-      "公約",
-      currentConfidenceCandidate.manifesto
-    );
-
-    const detailsButton = document.getElementById(
-      "confidenceCandidateDetailsButton"
-    );
-    const detailsPanel = document.getElementById(
-      "confidenceCandidateDetails"
-    );
-    detailsPanel.classList.add("hidden");
-    detailsButton.setAttribute("aria-expanded", "false");
-    detailsButton.textContent = "プロフィール・所信・公約を見る";
-    detailsButton.onclick = function() {
-      toggleCandidateDetails_(detailsButton, detailsPanel);
-    };
-    detailsButton.classList.remove("hidden");
-
-    card.classList.remove("hidden");
-  }
-
-  function toggleCandidateDetails_(button, panel) {
-    const isOpening = panel.classList.contains("hidden");
-    panel.classList.toggle("hidden", !isOpening);
-    button.setAttribute("aria-expanded", String(isOpening));
-    button.textContent = isOpening
-      ? "詳細を閉じる"
-      : "プロフィール・所信・公約を見る";
-  }
-
-  function renderCandidateDetailText_(elementId, label, value) {
-    const element = document.getElementById(elementId);
-    const text = String(value || "").trim();
-    element.textContent =
-      "【" + label + "】\n" + (text || "未登録");
-    element.classList.remove("hidden");
   }
 
 
@@ -762,95 +724,6 @@
           meta.className = "candidateMeta";
           meta.textContent = metaValues.join(" ／ ");
           body.appendChild(meta);
-        }
-
-
-        const detailsPanel =
-          document.createElement("div");
-
-        detailsPanel.className =
-          "candidateDetails hidden";
-
-        const isCandidateOption = Boolean(candidateName);
-
-        const profile =
-          String(
-            option.profile || ""
-          ).trim();
-
-        if (isCandidateOption) {
-          const profileBox =
-            document.createElement("div");
-
-          profileBox.className =
-            "candidateProfile";
-
-          profileBox.textContent =
-            "【プロフィール】\n" + (profile || "未登録");
-
-          detailsPanel.appendChild(
-            profileBox
-          );
-        }
-
-
-        const statement =
-          String(
-            option.statement || ""
-          ).trim();
-
-        if (isCandidateOption) {
-          const statementBox =
-            document.createElement("div");
-
-          statementBox.className =
-            "candidateStatement";
-
-          statementBox.textContent =
-            "【所信】\n" + (statement || "未登録");
-
-          detailsPanel.appendChild(
-            statementBox
-          );
-        }
-
-        const manifesto = String(option.manifesto || "").trim();
-        if (isCandidateOption) {
-          const manifestoBox = document.createElement("div");
-          manifestoBox.className = "candidateManifesto";
-          manifestoBox.textContent =
-            "【公約】\n" + (manifesto || "未登録");
-          detailsPanel.appendChild(manifestoBox);
-        }
-
-        if (isCandidateOption) {
-          const detailsButton =
-            document.createElement("button");
-
-          detailsButton.type = "button";
-          detailsButton.className =
-            "candidateDetailsButton";
-          detailsButton.textContent =
-            "プロフィール・所信・公約を見る";
-          detailsButton.setAttribute(
-            "aria-expanded",
-            "false"
-          );
-
-          detailsButton.addEventListener(
-            "click",
-            function(event) {
-              event.preventDefault();
-              event.stopPropagation();
-              toggleCandidateDetails_(
-                detailsButton,
-                detailsPanel
-              );
-            }
-          );
-
-          body.appendChild(detailsButton);
-          body.appendChild(detailsPanel);
         }
 
 
