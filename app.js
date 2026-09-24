@@ -38,6 +38,7 @@
 
   const ELECTION_VIEW = {
     LOADING: "loadingView",
+    LINK: "linkIdentityView",
     BEFORE: "beforeView",
     PAUSED: "pausedView",
     VOTE: "voteView",
@@ -145,10 +146,14 @@
       return;
     }
 
+    if (response && response.notLinked === true && currentIdToken && !IS_ELECTION_PREVIEW) {
+      showView_(ELECTION_VIEW.LINK);
+      return;
+    }
     if (!response || response.ok !== true) {
       if (
         response &&
-        response.authenticationError === true
+        response.authenticationError === true && !currentIdToken
       ) {
         initializeLiffAuthentication_();
         return;
@@ -1102,6 +1107,7 @@
   async function callElectionApi_(action, params) {
     const body = new URLSearchParams({
       action: action,
+      name:String(params.name || ""), clubTerm:String(params.clubTerm || ""), birthDate:String(params.birthDate || ""),
       electionId: String(params.electionId || ""),
       optionId: String(params.optionId || ""),
       preview: IS_ELECTION_PREVIEW ? "1" : "",
@@ -1151,4 +1157,29 @@
           text == null ? "" : text
         );
     }
+  }
+
+  let identityLinkBusy = false;
+  function submitIdentityLink_(event) {
+    event.preventDefault();
+    if (identityLinkBusy || IS_ELECTION_PREVIEW) return;
+    const params = {idToken:currentIdToken, name:document.getElementById("identityName").value,
+      clubTerm:document.getElementById("identityTerm").value, birthDate:document.getElementById("identityBirth").value};
+    identityLinkBusy = true;
+    document.getElementById("identitySubmit").disabled = true;
+    setText_("identityError", "確認しています…");
+    const done = response => {
+      identityLinkBusy = false;
+      document.getElementById("identitySubmit").disabled = false;
+      if (response && response.ok === true && response.linked === true) {
+        document.getElementById("identityForm").reset();
+        setText_("identityError", "");
+        loadElectionPageState();
+      } else if (response && response.authenticationError) {
+        shouldOpenLiffOnRetry = true;
+        document.getElementById("identityForm").reset();
+        showAuthenticationError_("LINE認証の有効時間が切れました。LINEで開き直してください。");
+      } else setText_("identityError", response && response.error || "確認できませんでした。時間をおいてお試しください。");
+    };
+    callElectionApi_("linkIdentity", params).then(done).catch(() => done(null));
   }

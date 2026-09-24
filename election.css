@@ -975,3 +975,5 @@
 .voteCandidate .candidateDetailsButton { min-height: 44px; max-width: 100%; white-space: normal; margin: 12px 0; padding: 10px 16px; }
 .voteCandidate .candidateDetailsButton:focus-visible { outline: 3px solid #186b48; outline-offset: 3px; }
 .voteCandidateHelp { line-height: 1.7; margin: 8px 0 16px; }
+
+.identityCard label{display:block;margin:18px 0 6px;font-weight:700}.identityCard input{box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;padding:12px;font:inherit;border:1px solid #bbb;border-radius:8px}.identityCard button{margin-top:12px;width:100%}#identityError{color:#941d30;white-space:pre-line}

@@ -35,6 +35,10 @@ document.addEventListener("DOMContentLoaded", start);
 
 async function start() {
   try {
+    if (launchParams.view === "vote") {
+      location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
+      return;
+    }
     if (launchParams.view === "news" && launchParams.id && launchParams.newsToken) {
       const result = await api({
         action:"resolve", view:"news", id:launchParams.id, newsToken:launchParams.newsToken

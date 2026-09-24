@@ -15,7 +15,7 @@
     src="https://static.line-scdn.net/liff/edge/2/sdk.js">
   </script>
 
-  <link rel="stylesheet" href="./election.css?v=20260915-vote-candidates">
+  <link rel="stylesheet" href="./election.css?v=20260924-identity-link">
 </head>
 
 <body>
@@ -57,6 +57,23 @@
     <!-- =========================================
          投票開始前
     ========================================== -->
+    <section id="linkIdentityView" class="view hidden">
+      <div class="card electionCard identityCard">
+        <h1>本人確認・LINE連携</h1>
+        <p>このLINEアカウントは未連携です。名簿の登録内容を確認し、投票画面へ進みます。</p>
+        <form id="identityForm" onsubmit="submitIdentityLink_(event)">
+          <label for="identityName">氏名</label>
+          <input id="identityName" autocomplete="name" maxlength="100" required placeholder="例：山田 太郎">
+          <label for="identityTerm">部内期数</label>
+          <input id="identityTerm" inputmode="numeric" maxlength="10" required placeholder="例：25">
+          <label for="identityBirth">生年月日</label>
+          <input id="identityBirth" type="date" required>
+          <p>確認できた会員情報に、このLINEアカウントを連携します。</p>
+          <button id="identitySubmit" type="submit" class="button primaryButton">本人確認してLINEを連携する</button>
+          <p id="identityError" role="alert" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
     <section id="beforeView" class="view hidden">
       <div class="card electionCard announcementCard">
         <div class="statusBadge">公示中</div>
@@ -400,7 +417,7 @@
 
   </main>
 
-  <script src="./app.js?v=20260916-admin-preview"></script>
+  <script src="./app.js?v=20260924-identity-link"></script>
 
 </body>
 </html>
