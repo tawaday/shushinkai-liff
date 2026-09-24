@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>二重投票拒否の確認</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<body style="font-family:sans-serif;padding:24px;line-height:1.7"><h1>二重投票拒否の確認</h1>
+<p>今回のテスト選挙への投票済み状態を確認してから、同じ要求を2回送ります。</p>
+<button id="run" disabled style="padding:16px;font-size:18px">再送テストを実行</button>
+<pre id="result" style="white-space:pre-wrap">LINE認証中…</pre>
+<script>
+const apiUrl='https://script.google.com/macros/s/AKfycbyYfVwfTY6p-2O0jBhWEeUVGLYtihMuSB0EdmO1bIByEK_hgh0fSb4IDBkJ151SElc/exec';
+const electionId='election_1bc2810d7a7e4fbc87fe3db0fd70df27';
+const deadline=Date.parse('2026-09-24T20:05:28.813Z');
+const output=document.getElementById('result'),button=document.getElementById('run');let token='';
+async function api(action){
+  if(Date.now()>=deadline)throw Error('テスト時間は終了しました。');
+  const response=await fetch(apiUrl,{method:'POST',body:new URLSearchParams({action,idToken:token,electionId,optionId:'prod_e2e_054_A'})});
+  if(!response.ok)throw Error('通信に失敗しました。');return response.json();
+}
+(async()=>{try{
+  await liff.init({liffId:'2010887632-4M5XI8d7'});
+  if(!liff.isInClient())throw Error('LINE内で開いてください。');
+  token=liff.getIDToken();if(!token)throw Error('LINE認証を確認できません。');
+  if(Date.now()>=deadline)throw Error('テスト時間は終了しました。');
+  output.textContent='準備できました。';button.disabled=false;
+}catch(error){output.textContent=error.message;}})();
+button.onclick=async()=>{
+  button.disabled=true;
+  try{
+    const identity=await api('authenticate');
+    if(identity.ok!==true||String(identity.memberId).replace(/^0+/,'')!=='54')throw Error('今回のテスト本人ではありません。');
+    const before=await api('getPageState');
+    if(before.ok!==true||before.state!=='already'||before.electionData?.election?.electionId!==electionId)throw Error('対象テスト選挙の投票済み状態を確認できないため、再送を中止しました。');
+    const results=await Promise.all([api('castVote'),api('castVote')]);
+    output.textContent=results.map((r,i)=>'要求'+(i+1)+': '+(r.ok===false&&r.alreadyVoted===true?'二重投票を拒否しました':'想定外の結果')+'\n'+JSON.stringify({ok:r.ok,alreadyVoted:r.alreadyVoted,error:r.error})).join('\n\n');
+  }catch(error){output.textContent=error.message;}
+  finally{token='';}
+};
+</script></body></html>
