@@ -15,7 +15,7 @@
     src="https://static.line-scdn.net/liff/edge/2/sdk.js">
   </script>
 
-  <link rel="stylesheet" href="./election.css?v=20260924-identity-link">
+  <link rel="stylesheet" href="./election.css?v=20260927-date-width1">
 </head>
 
 <body>
@@ -67,7 +67,9 @@
           <label for="identityTerm">部内期数</label>
           <input id="identityTerm" inputmode="numeric" maxlength="10" required placeholder="例：25">
           <label for="identityBirth">生年月日</label>
-          <input id="identityBirth" type="date" required>
+          <span class="identityDateInputFrame">
+            <input id="identityBirth" type="date" required>
+          </span>
           <p>確認できた会員情報に、このLINEアカウントを連携します。</p>
           <button id="identitySubmit" type="submit" class="button primaryButton">本人確認してLINEを連携する</button>
           <p id="identityError" role="alert" aria-live="polite"></p>

@@ -977,3 +977,35 @@
 .voteCandidateHelp { line-height: 1.7; margin: 8px 0 16px; }
 
 .identityCard label{display:block;margin:18px 0 6px;font-weight:700}.identityCard input{box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;padding:12px;font:inherit;border:1px solid #bbb;border-radius:8px}.identityCard button{margin-top:12px;width:100%}#identityError{color:#941d30;white-space:pre-line}
+
+/* Keep padding outside the native date control so iOS preserves the card margin. */
+.identityCard .identityDateInputFrame {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid #bbb;
+  border-radius: 8px;
+  background: #fff;
+}
+.identityCard .identityDateInputFrame input[type="date"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 1.25em;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.identityCard .identityDateInputFrame input[type="date"]::-webkit-date-and-time-value {
+  min-height: 1.25em;
+  text-align: left;
+}
