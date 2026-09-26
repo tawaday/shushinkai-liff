@@ -144,6 +144,11 @@ function handleResolve(result) {
     renderInquiryAdmin_(result);
     return;
   }
+  // These routes must resolve to an identity form, registered screen, or destination.
+  if (["card", "profile", "register"].includes(launchParams.view)) {
+    message("画面を開けませんでした", "表示に必要な情報を確認できませんでした。この画面を閉じ、LINE内から同じリンクをもう一度開いてください。繰り返す場合は、画面の画像と開いた時刻を事務局へお知らせください。");
+    return;
+  }
   message("ようこそ", `${result.memberName || "会員"} 様`);
 }
 
@@ -159,6 +164,32 @@ function renderRegistered(result) {
   $("registeredMemberName").textContent = result.memberName || "（記録なし）";
   $("registeredAt").textContent = result.registeredAt || "（記録なし）";
   show("registered");
+}
+
+async function completeRegistration_(result) {
+  if (launchParams.view !== "card" && launchParams.view !== "profile") {
+    renderRegistered(result);
+    return;
+  }
+  show("loading");
+  try {
+    if (isIdTokenExpired_()) {
+      restartLineLogin_();
+      return;
+    }
+    const destination = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
+    if (!destination.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(destination.error || ""))) {
+      restartLineLogin_();
+      return;
+    }
+    if (!destination.ok || destination.notLinked || destination.registered !== true ||
+        !destination.redirectUrl || ["register", "alreadyRegistered"].includes(destination.view)) {
+      throw Error(destination.error || "連携後の行き先を確認できませんでした。");
+    }
+    handleResolve(destination);
+  } catch (error) {
+    message("LINE連携は完了しました", "元の画面を開けませんでした。LINEのメニューからもう一度開いてください。\n" + error.message);
+  }
 }
 
 function message(title, text, url, label) {
@@ -185,7 +216,7 @@ $("lookupButton").onclick = async () => {
     });
     if (!result.ok) throw Error(result.error);
     if (result.alreadyRegistered) {
-      renderRegistered(result);
+      await completeRegistration_(result);
       return;
     }
     confirmationToken = result.confirmationToken;
@@ -202,7 +233,7 @@ $("confirmButton").onclick = async () => {
     button.disabled = true;
     const result = await api({ action:"registrationConfirm", idToken, confirmationToken });
     if (!result.ok) throw Error(result.error);
-    renderRegistered(result);
+    await completeRegistration_(result);
   } catch (error) {
     message("登録できませんでした", error.message);
   } finally {
@@ -339,6 +370,16 @@ $("responseConfirmSend").onclick = async () => {
 
 async function api(data) {
   const body = new URLSearchParams(data);
+  // Only coarse route/SDK flags are sent; diagnostics add no separate request or UI.
+  if (["card", "profile", "register"].includes(launchParams.view) &&
+      ["resolve", "registrationLookup", "registrationConfirm"].includes(data.action)) {
+    body.set("traceBuild", "portal-20260926-prod1");
+    body.set("traceView", launchParams.view);
+    try {
+      body.set("traceInLine", String(liff.isInClient() === true));
+      body.set("traceLoggedIn", String(liff.isLoggedIn() === true));
+    } catch (_) { /* Diagnostics must not block an existing request. */ }
+  }
   const route = new URLSearchParams({
     action:String(data.action || ""),
     view:String(data.view || ""),
