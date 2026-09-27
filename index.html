@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20260809-1"></head>
+<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20260928-date-width1"></head>
 <body><main>
   <header><b>宗心会</b><span>会員ポータル</span></header>
   <section id="loading" class="card"><div class="spinner"></div><p>LINEで本人確認しています</p></section>
@@ -19,7 +19,7 @@
   <section id="register" class="card hidden"><h1>会員登録</h1><p>名簿と照合し、このLINEアカウントを会員IDに連携します。</p>
     <label>氏名<input id="name" autocomplete="name" placeholder="例：山田 太郎"></label>
     <label>部内期数<input id="clubTerm" inputmode="numeric" placeholder="例：25"></label>
-    <label>生年月日<input id="birthDate" type="date"></label>
+    <label>生年月日<span class="registrationDateFrame"><input id="birthDate" type="date"></span></label>
     <button id="lookupButton" class="button">名簿を確認する</button><p id="registerError" class="error"></p>
     <a id="applicationLink" class="subLink hidden">会員登録申請がまだの方はこちら</a>
   </section>
