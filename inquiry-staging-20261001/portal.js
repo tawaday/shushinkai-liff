@@ -1,0 +1,546 @@
+const PORTAL = {
+  LIFF_ID: "2010887632-4M5XI8d7",
+  GAS_API_URL: "https://script.google.com/macros/s/AKfycbyNhmNa8UquqgYu4HQWznO8521Ld7nXg4gS3HUN66yZD8nOEIQCPJb82wpMW-MRIjc/exec"
+};
+
+let idToken = "";
+let confirmationToken = "";
+const $ = id => document.getElementById(id);
+const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage"];
+const show = id => {
+  screenIds.forEach(x => $(x).classList.toggle("hidden", x !== id));
+  const managing = ["inquiryAdmin","inquiryList","faqManage"].includes(id);
+  for (const [tab, selected] of [["memberTab",!managing],["manageTab",managing]]) {
+    if ($(tab)) {$(tab).classList.toggle("secondaryButton",!selected);$(tab).setAttribute("aria-pressed",String(selected));}
+  }
+};
+
+const launchParams = (() => {
+  const params = new URLSearchParams(location.search);
+  const state = params.get("liff.state") || "";
+  const query = state.includes("?")
+    ? state.slice(state.indexOf("?") + 1)
+    : state.replace(/^[?#]/, "");
+  const nested = new URLSearchParams(query);
+  let saved = {};
+  // LINE外の初回ログインでは、OAuthから戻る際にLIFFのviewが落ちる場合がある。
+  // code/state付きの正規コールバック時だけ、ログイン直前に保存した遷移先を復元する。
+  if (params.has("code") && params.has("state")) {
+    try { saved = JSON.parse(sessionStorage.getItem("shushinkai_liff_launch_params") || "{}"); } catch (_) {}
+  }
+  return {
+    view: params.get("view") || nested.get("view") || saved.view || "home",
+    preview: (params.get("preview") || nested.get("preview") || saved.preview || "") === "1" ? "1" : "",
+    election: params.get("election") || nested.get("election") || saved.election || "chairman_2026",
+    id: params.get("id") || nested.get("id") || saved.id || "",
+    newsToken: params.get("nt") || nested.get("nt") || saved.newsToken || ""
+  };
+})();
+
+document.addEventListener("DOMContentLoaded", start);
+
+async function start() {
+  try {
+    if (launchParams.view === "vote") {
+      location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
+      return;
+    }
+    if (launchParams.view === "news" && launchParams.id && launchParams.newsToken) {
+      const result = await api({
+        action:"resolve", view:"news", id:launchParams.id, newsToken:launchParams.newsToken
+      });
+      if (result.ok) {
+        handleResolve(result);
+        return;
+      }
+    }
+    await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:true });
+    if (!liff.isLoggedIn()) {
+      saveLaunchParamsForLogin_();
+      liff.login({ redirectUri:location.href });
+      return;
+    }
+    if (isIdTokenExpired_()) {
+      restartLineLogin_();
+      return;
+    }
+    idToken = liff.getIDToken() || "";
+    if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
+    const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
+    if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
+      restartLineLogin_();
+      return;
+    }
+    sessionStorage.removeItem("shushinkai_liff_launch_params");
+    handleResolve(result);
+  } catch (error) {
+    message("画面を開けません", error.message);
+  }
+}
+
+function isIdTokenExpired_() {
+  const decoded = typeof liff.getDecodedIDToken === "function"
+    ? liff.getDecodedIDToken()
+    : null;
+  const expiresAt = Number(decoded && decoded.exp || 0) * 1000;
+  return !!expiresAt && expiresAt <= Date.now() + 30000;
+}
+
+function restartLineLogin_() {
+  const retryKey = "shushinkai_liff_auth_retry";
+  const lastRetry = Number(sessionStorage.getItem(retryKey) || 0);
+  if (Date.now() - lastRetry < 15000) {
+    sessionStorage.removeItem(retryKey);
+    throw Error("LINE認証を更新できませんでした。画面を閉じて、もう一度開いてください。");
+  }
+  sessionStorage.setItem(retryKey, String(Date.now()));
+  saveLaunchParamsForLogin_();
+  try { liff.logout(); } catch (_) {}
+  liff.login({ redirectUri:location.href });
+}
+
+function saveLaunchParamsForLogin_() {
+  sessionStorage.setItem("shushinkai_liff_launch_params", JSON.stringify({
+    view:launchParams.view,
+    preview:launchParams.preview,
+    election:launchParams.election,
+    id:launchParams.id,
+    newsToken:launchParams.newsToken
+  }));
+}
+
+function handleResolve(result) {
+  if (!result.ok) {
+    if (result.notLinked) {
+      showRegistration(result.fallbackUrl);
+      return;
+    }
+    throw Error(result.error || "本人確認に失敗しました。");
+  }
+  if (result.view === "register") {
+    showRegistration(result.fallbackUrl);
+    return;
+  }
+  if (result.view === "alreadyRegistered") {
+    renderRegistered(result);
+    return;
+  }
+  if (result.redirectUrl) {
+    location.replace(result.redirectUrl);
+    return;
+  }
+  if (result.view === "vote") {
+    location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
+    return;
+  }
+  if (result.view === "news") {
+    if (result.announcement) renderNewsArticle(result.announcement);
+    else renderNews(result.announcements || []);
+    return;
+  }
+  if (result.view === "contactSent") {
+    message("メニューを送りました", "宗心会公式LINEの個別トークに、お問い合わせメニューを送りました。LINEへ戻ってご確認ください。");
+    return;
+  }
+  if (result.view === "inquiry") {
+    configureInquiryTabs_(result.canManage === true);
+    show("inquiryHome");
+    return;
+  }
+  if (result.view === "inquiryList") {
+    configureInquiryTabs_(true);
+    renderInquiryList_(result);
+    return;
+  }
+  if (result.view === "inquiryAdmin") {
+    configureInquiryTabs_(true);
+    renderInquiryAdmin_(result);
+    return;
+  }
+  // These routes must resolve to an identity form, registered screen, or destination.
+  if (["card", "profile", "register"].includes(launchParams.view)) {
+    message("画面を開けませんでした", "表示に必要な情報を確認できませんでした。この画面を閉じ、LINE内から同じリンクをもう一度開いてください。繰り返す場合は、画面の画像と開いた時刻を事務局へお知らせください。");
+    return;
+  }
+  message("ようこそ", `${result.memberName || "会員"} 様`);
+}
+
+function showRegistration(fallbackUrl) {
+  const link = $("applicationLink");
+  link.classList.toggle("hidden", !fallbackUrl);
+  if (fallbackUrl) link.href = fallbackUrl;
+  show("register");
+}
+
+function renderRegistered(result) {
+  $("registeredMemberId").textContent = result.memberId || "（記録なし）";
+  $("registeredMemberName").textContent = result.memberName || "（記録なし）";
+  $("registeredAt").textContent = result.registeredAt || "（記録なし）";
+  show("registered");
+}
+
+async function completeRegistration_(result) {
+  if (launchParams.view !== "card" && launchParams.view !== "profile") {
+    renderRegistered(result);
+    return;
+  }
+  show("loading");
+  try {
+    if (isIdTokenExpired_()) {
+      restartLineLogin_();
+      return;
+    }
+    const destination = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
+    if (!destination.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(destination.error || ""))) {
+      restartLineLogin_();
+      return;
+    }
+    if (!destination.ok || destination.notLinked || destination.registered !== true ||
+        !destination.redirectUrl || ["register", "alreadyRegistered"].includes(destination.view)) {
+      throw Error(destination.error || "連携後の行き先を確認できませんでした。");
+    }
+    handleResolve(destination);
+  } catch (error) {
+    message("LINE連携は完了しました", "元の画面を開けませんでした。LINEのメニューからもう一度開いてください。\n" + error.message);
+  }
+}
+
+function message(title, text, url, label) {
+  show("message");
+  $("messageTitle").textContent = title;
+  $("messageText").textContent = text || "";
+  const link = $("messageLink");
+  link.classList.toggle("hidden", !url);
+  if (url) {
+    link.href = url;
+    link.textContent = label || "開く";
+  }
+}
+
+$("lookupButton").onclick = async () => {
+  try {
+    $("registerError").textContent = "";
+    const result = await api({
+      action:"registrationLookup",
+      idToken,
+      name:$("name").value,
+      clubTerm:$("clubTerm").value,
+      birthDate:$("birthDate").value
+    });
+    if (!result.ok) throw Error(result.error);
+    if (result.alreadyRegistered) {
+      await completeRegistration_(result);
+      return;
+    }
+    confirmationToken = result.confirmationToken;
+    $("confirmText").textContent = `${result.member.name} 様（部内期数 ${result.member.clubTerm}）\nこの内容でLINE連携します。`;
+    show("confirm");
+  } catch (error) {
+    $("registerError").textContent = error.message;
+  }
+};
+
+$("confirmButton").onclick = async () => {
+  const button = $("confirmButton");
+  try {
+    button.disabled = true;
+    const result = await api({ action:"registrationConfirm", idToken, confirmationToken });
+    if (!result.ok) throw Error(result.error);
+    await completeRegistration_(result);
+  } catch (error) {
+    message("登録できませんでした", error.message);
+  } finally {
+    button.disabled = false;
+  }
+};
+
+$("inquiryForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = $("inquirySubmit");
+  const errorBox = $("inquiryError");
+  try {
+    errorBox.textContent = "";
+    button.disabled = true;
+    button.textContent = "送信しています…";
+    const file = $("inquiryAttachment").files[0];
+    if (file && file.size > 10 * 1024 * 1024) throw Error("添付ファイルは10MB以下にしてください。");
+    const attachment = file ? await fileAsBase64_(file) : null;
+    const responseChoice = document.querySelector('input[name="responseRequested"]:checked');
+    const result = await apiJson({
+      api:"1", fn:"inquirySubmit", idToken,
+      inquiry:{
+        category:$("inquiryCategory").value,
+        subject:$("inquirySubject").value,
+        body:$("inquiryBody").value,
+        responseRequested:responseChoice && responseChoice.value === "true",
+        attachment:attachment
+      }
+    });
+    if (!result.ok) throw Error(result.error || "送信できませんでした。");
+    $("inquiryForm").reset();
+    $("inquiryId").textContent = result.inquiryId;
+    $("inquiryCreatedAt").textContent = result.createdAt;
+    show("inquiryComplete");
+    window.scrollTo(0, 0);
+  } catch (error) {
+    errorBox.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "送信する";
+  }
+});
+
+function fileAsBase64_(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ fileName:file.name, mimeType:file.type, base64:String(reader.result || "").split(",")[1] || "" });
+    reader.onerror = () => reject(Error("添付ファイルを読み取れませんでした。"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function apiJson(data) {
+  const response = await fetch(PORTAL.GAS_API_URL, {
+    method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body:JSON.stringify(data), cache:"no-store", redirect:"follow"
+  });
+  if (!response.ok) throw Error("通信エラー（HTTP " + response.status + "）");
+  return response.json();
+}
+
+function renderInquiryAdmin_(result) {
+  const inquiry = result.inquiry || {};
+  currentInquiryId = inquiry.inquiryId || currentInquiryId;
+  $("adminInquiryId").textContent = inquiry.inquiryId || "";
+  $("adminCreatedAt").textContent = inquiry.createdAt || "";
+  $("adminMember").textContent = (inquiry.name || "") + (inquiry.memberId ? "（" + inquiry.memberId + "）" : "");
+  $("adminCategory").textContent = inquiry.category || "";
+  $("adminSubject").textContent = inquiry.subject || "";
+  $("adminBody").textContent = inquiry.body || "";
+  $("adminResponseRequested").textContent = inquiry.responseRequested ? "希望する" : "希望しない";
+  $("adminAssignedTo").value = inquiry.assignedTo || (result.operator && result.operator.name || "");
+  $("adminStatus").value = inquiry.status || "受付中";
+  $("adminResponseText").value = inquiry.responseText || "";
+  const attachment = $("adminAttachment");
+  attachment.classList.toggle("hidden", !inquiry.attachmentUrl);
+  if (inquiry.attachmentUrl) attachment.href = inquiry.attachmentUrl;
+  $("adminStatusMessage").textContent = inquiry.responseSentAt
+    ? "回答送信済み：" + inquiry.responseSentAt
+    : "";
+  show("inquiryAdmin");
+}
+
+async function submitInquiryAdminAction_(fn) {
+  const isSend = fn === "inquiryRespond";
+  const button = isSend ? $("adminSend") : $("adminSave");
+  const otherButton = isSend ? $("adminSave") : $("adminSend");
+  const errorBox = $("adminError");
+  try {
+    errorBox.textContent = "";
+    $("adminStatusMessage").textContent = "";
+    if (isSend && !$("adminResponseText").value.trim()) throw Error("回答文を入力してください。");
+    button.disabled = true;
+    otherButton.disabled = true;
+    button.textContent = isSend ? "送信しています…" : "保存しています…";
+    const result = await apiJson({
+      api:"1", fn:fn, idToken, inquiryId:currentInquiryId,
+      input:{
+        assignedTo:$("adminAssignedTo").value,
+        status:$("adminStatus").value,
+        responseText:$("adminResponseText").value
+      }
+    });
+    if (!result.ok) throw Error(result.error || "処理できませんでした。");
+    renderInquiryAdmin_({inquiry:result.inquiry});
+    $("adminStatusMessage").textContent = isSend
+      ? "投稿者へ回答を送信しました。"
+      : "下書きを保存しました。";
+  } catch (error) {
+    errorBox.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    otherButton.disabled = false;
+    button.textContent = isSend ? "投稿者へ回答を送信" : "下書き保存";
+  }
+}
+
+$("adminSave").onclick = () => submitInquiryAdminAction_("inquirySave");
+$("adminSend").onclick = () => {
+  const responseText = $("adminResponseText").value.trim();
+  if (!responseText) {
+    $("adminError").textContent = "回答文を入力してください。";
+    return;
+  }
+  $("adminError").textContent = "";
+  $("confirmRecipient").textContent = $("adminMember").textContent;
+  $("confirmSubject").textContent = $("adminSubject").textContent;
+  $("confirmResponseText").textContent = responseText;
+  $("responseConfirmModal").classList.remove("hidden");
+};
+$("responseConfirmCancel").onclick = () => $("responseConfirmModal").classList.add("hidden");
+$("responseConfirmSend").onclick = async () => {
+  $("responseConfirmModal").classList.add("hidden");
+  await submitInquiryAdminAction_("inquiryRespond");
+};
+
+async function api(data) {
+  const body = new URLSearchParams(data);
+  // Only coarse route/SDK flags are sent; diagnostics add no separate request or UI.
+  if (["card", "profile", "register"].includes(launchParams.view) &&
+      ["resolve", "registrationLookup", "registrationConfirm"].includes(data.action)) {
+    body.set("traceBuild", "portal-20260926-prod1");
+    body.set("traceView", launchParams.view);
+    try {
+      body.set("traceInLine", String(liff.isInClient() === true));
+      body.set("traceLoggedIn", String(liff.isLoggedIn() === true));
+    } catch (_) { /* Diagnostics must not block an existing request. */ }
+  }
+  const route = new URLSearchParams({
+    action:String(data.action || ""),
+    view:String(data.view || ""),
+    id:String(data.id || ""),
+    newsToken:String(data.newsToken || ""),
+    _t:String(Date.now())
+  });
+  const response = await fetch(PORTAL.GAS_API_URL + "?" + route.toString(), {
+    method:"POST",
+    body,
+    cache:"no-store",
+    redirect:"follow"
+  });
+  if (!response.ok) throw Error("通信エラー（HTTP " + response.status + "）");
+  const result = await response.json();
+  if (!result || typeof result.ok !== "boolean") throw Error("本人確認結果を読み取れませんでした。");
+  return result;
+}
+
+function renderNews(items) {
+  show("news");
+  $("newsArticle").classList.add("hidden");
+  const list = $("newsList");
+  list.replaceChildren();
+  if (!items.length) {
+    list.innerHTML = '<div class="newsItem">現在、新しいお知らせはありません。</div>';
+    return;
+  }
+  items.forEach(item => {
+    const article = document.createElement("article");
+    article.className = "newsItem";
+    const time = document.createElement("time");
+    time.textContent = item.date || "";
+    const heading = document.createElement("h2");
+    heading.textContent = item.title;
+    const body = document.createElement("p");
+    body.textContent = item.body || "";
+    article.append(time, heading, body);
+    if (item.id) {
+      const link = document.createElement("a");
+      link.href = "?view=news&id=" + encodeURIComponent(item.id);
+      link.textContent = "詳しく見る";
+      article.append(link);
+    }
+    list.append(article);
+  });
+}
+
+function renderNewsArticle(item) {
+  show("news");
+  $("newsList").replaceChildren();
+  $("newsArticle").classList.remove("hidden");
+  $("newsDate").textContent = item.date || "";
+  $("newsTitle").textContent = item.title || "お知らせ";
+  $("newsSummary").textContent = item.body || "";
+
+  const Font = Quill.import("formats/font");
+  Font.whitelist = ["gothic", "mincho"];
+  Quill.register(Font, true);
+  const Size = Quill.import("attributors/style/size");
+  Size.whitelist = ["12px", "14px", "16px", "18px", "24px", "32px"];
+  Quill.register(Size, true);
+
+  const viewer = new Quill("#newsContent", {
+    readOnly:true,
+    modules:{ toolbar:false },
+    theme:"snow"
+  });
+  if (item.contentDelta) {
+    try {
+      const delta = JSON.parse(item.contentDelta);
+      if (!delta || !Array.isArray(delta.ops)) throw Error("invalid delta");
+      viewer.setContents(delta);
+      return;
+    } catch (_) {}
+  }
+  viewer.setText(item.contentHtml || item.body || "");
+}
+
+let currentInquiryId = launchParams.id;
+let editingFaq = {id:"",revision:0};
+function configureInquiryTabs_(allowed) {
+  $("inquiryTabs").classList.toggle("hidden", !allowed);
+}
+$("memberTab").onclick = () => show("inquiryHome");
+$("manageTab").onclick = () => loadInquiryList_();
+for (const label of ["FAQ","質問","意見","連絡","情報提供"]) {
+  const button = document.createElement("button");
+  button.type = "button";button.className = "button secondaryButton";button.textContent = label;
+  button.onclick = () => {
+    if (label === "FAQ") {loadFaq_(false);return;}
+    $("inquiryCategory").value = label;$("inquiryFormTitle").textContent = label;show("inquiry");
+  };
+  $("inquiryEntrances").appendChild(button);
+}
+async function inquiryRequest_(fn, extra = {}) {
+  const result = await apiJson({api:"1",fn,idToken,...extra});
+  if (!result.ok) throw Error(result.error || "読み込みできませんでした。");
+  return result;
+}
+async function loadInquiryList_() {
+  show("inquiryList");$("inquiryListItems").textContent="読み込み中…";$("inquiryListError").textContent="";
+  try {renderInquiryList_(await inquiryRequest_("inquiryList"));}
+  catch(error) {$("inquiryListItems").textContent="";$("inquiryListError").textContent=error.message;}
+}
+function renderInquiryList_(result) {
+  show("inquiryList");const list=$("inquiryListItems");list.replaceChildren();
+  if (!result.inquiries.length) list.textContent="問い合わせはまだありません。";
+  for (const item of result.inquiries) {
+    const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
+    button.textContent=`${item.createdAt} / ${item.category} / ${item.status}\n${item.subject}`;
+    button.onclick=async () => {
+      button.disabled=true;
+      try {handleResolve(await api({action:"resolve",view:"inquiry-admin",id:item.inquiryId,idToken}));}
+      catch(error) {$("inquiryListError").textContent=error.message;}
+      finally {button.disabled=false;}
+    };list.appendChild(button);
+  }
+}
+async function loadFaq_(manage) {
+  show(manage ? "faqManage" : "inquiryFaq");
+  const list=$(manage ? "faqManageItems" : "faqItems");list.textContent="読み込み中…";
+  if (manage) {resetFaq_();$("faqManageError").textContent="";}
+  try {
+    const result=await inquiryRequest_("faqList",{manage});list.replaceChildren();
+    if (!result.items.length) list.textContent=manage ? "FAQはまだ登録されていません。" : "現在公開されているFAQはありません。質問からお問い合わせください。";
+    for(const item of result.items) {
+      if(manage) {
+        const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
+        button.textContent=(item.published ? "公開中：" : "下書き：")+item.question;
+        button.onclick=()=>{editingFaq={id:item.id,revision:item.revision};$("faqQuestion").value=item.question;$("faqAnswer").value=item.answer;$("faqPublished").checked=item.published;};list.appendChild(button);
+      } else {
+        const details=document.createElement("details"),summary=document.createElement("summary"),answer=document.createElement("p");
+        summary.textContent=item.question;answer.textContent=item.answer;answer.style.whiteSpace="pre-wrap";details.append(summary,answer);list.appendChild(details);
+      }
+    }
+  } catch(error) {list.textContent=error.message;}
+}
+function resetFaq_(){editingFaq={id:"",revision:0};$("faqEditForm").reset();}
+$("faqManageButton").onclick=()=>loadFaq_(true);
+$("newFaq").onclick=resetFaq_;
+$("faqEditForm").onsubmit=async event=>{
+  event.preventDefault();const button=$("faqSaveButton");button.disabled=true;$("faqManageError").textContent="";
+  try {
+    await inquiryRequest_("faqSave",{input:{...editingFaq,question:$("faqQuestion").value,answer:$("faqAnswer").value,published:$("faqPublished").checked}});
+    await loadFaq_(true);
+  } catch(error) {$("faqManageError").textContent=error.message;}
+  finally {button.disabled=false;}
+};
