@@ -54,7 +54,11 @@ async function start() {
         return;
       }
     }
-    await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:false });
+    $("loading").querySelector("p").textContent = "LINEへ接続しています";
+    await Promise.race([
+      liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:false }),
+      new Promise((_,reject) => setTimeout(() => reject(Error("LINEへの接続に時間がかかっています。もう一度開いてください。")),45000))
+    ]);
     if (!liff.isLoggedIn()) {
       saveLaunchParamsForLogin_();
       liff.login({ redirectUri:location.href });
@@ -66,6 +70,7 @@ async function start() {
     }
     idToken = liff.getIDToken() || "";
     if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
+    $("loading").querySelector("p").textContent = "会員情報を確認しています";
     const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
       restartLineLogin_();
@@ -301,7 +306,7 @@ function fileAsBase64_(file) {
 
 async function apiJson(data) {
   const response = await fetch(PORTAL.GAS_API_URL, {
-    method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    method:"POST", signal:AbortSignal.timeout(45000), headers:{ "Content-Type":"text/plain;charset=utf-8" },
     body:JSON.stringify(data), cache:"no-store", redirect:"follow"
   });
   if (!response.ok) throw Error("通信エラー（HTTP " + response.status + "）");
@@ -404,6 +409,7 @@ async function api(data) {
   });
   const response = await fetch(PORTAL.GAS_API_URL + "?" + route.toString(), {
     method:"POST",
+    signal:AbortSignal.timeout(45000),
     body,
     cache:"no-store",
     redirect:"follow"
