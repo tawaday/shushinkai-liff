@@ -26,7 +26,7 @@ const launchParams = (() => {
   // LINE外の初回ログインでは、OAuthから戻る際にLIFFのviewが落ちる場合がある。
   // code/state付きの正規コールバック時だけ、ログイン直前に保存した遷移先を復元する。
   if (params.has("code") && params.has("state")) {
-    try { saved = JSON.parse(sessionStorage.getItem("shushinkai_liff_launch_params") || "{}"); } catch (_) {}
+    try { saved = JSON.parse(sessionStorage.getItem("shushinkai_inquiry_staging_launch_params") || "{}"); } catch (_) {}
   }
   return {
     view: params.get("view") || nested.get("view") || saved.view || "home",
@@ -54,7 +54,7 @@ async function start() {
         return;
       }
     }
-    await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:true });
+    await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:false });
     if (!liff.isLoggedIn()) {
       saveLaunchParamsForLogin_();
       liff.login({ redirectUri:location.href });
@@ -71,7 +71,7 @@ async function start() {
       restartLineLogin_();
       return;
     }
-    sessionStorage.removeItem("shushinkai_liff_launch_params");
+    sessionStorage.removeItem("shushinkai_inquiry_staging_launch_params");
     handleResolve(result);
   } catch (error) {
     message("画面を開けません", error.message);
@@ -87,7 +87,7 @@ function isIdTokenExpired_() {
 }
 
 function restartLineLogin_() {
-  const retryKey = "shushinkai_liff_auth_retry";
+  const retryKey = "shushinkai_inquiry_staging_auth_retry";
   const lastRetry = Number(sessionStorage.getItem(retryKey) || 0);
   if (Date.now() - lastRetry < 15000) {
     sessionStorage.removeItem(retryKey);
@@ -100,7 +100,7 @@ function restartLineLogin_() {
 }
 
 function saveLaunchParamsForLogin_() {
-  sessionStorage.setItem("shushinkai_liff_launch_params", JSON.stringify({
+  sessionStorage.setItem("shushinkai_inquiry_staging_launch_params", JSON.stringify({
     view:launchParams.view,
     preview:launchParams.preview,
     election:launchParams.election,
