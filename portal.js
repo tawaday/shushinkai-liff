@@ -6,8 +6,16 @@ const PORTAL = {
 let idToken = "";
 let confirmationToken = "";
 const $ = id => document.getElementById(id);
-const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news"];
-const show = id => screenIds.forEach(x => $(x).classList.toggle("hidden", x !== id));
+const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage"];
+let visibleScreen = "loading";
+const show = id => {
+  visibleScreen = id;
+  screenIds.forEach(x => $(x).classList.toggle("hidden", x !== id));
+  const managing = ["inquiryAdmin","inquiryList","faqManage"].includes(id);
+  for (const [tab, selected] of [["memberTab",!managing],["manageTab",managing]]) {
+    if ($(tab)) {$(tab).classList.toggle("secondaryButton",!selected);$(tab).setAttribute("aria-pressed",String(selected));}
+  }
+};
 
 const launchParams = (() => {
   const params = new URLSearchParams(location.search);
@@ -48,7 +56,7 @@ async function start() {
         return;
       }
     }
-    await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:true });
+    await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:false });
     if (!liff.isLoggedIn()) {
       saveLaunchParamsForLogin_();
       liff.login({ redirectUri:location.href });
@@ -137,10 +145,17 @@ function handleResolve(result) {
     return;
   }
   if (result.view === "inquiry") {
-    show("inquiry");
+    configureInquiryTabs_(result.canManage === true);
+    show("inquiryHome");
+    return;
+  }
+  if (result.view === "inquiryList") {
+    configureInquiryTabs_(true);
+    renderInquiryList_(result);
     return;
   }
   if (result.view === "inquiryAdmin") {
+    configureInquiryTabs_(true);
     renderInquiryAdmin_(result);
     return;
   }
@@ -264,6 +279,7 @@ $("inquiryForm").addEventListener("submit", async event => {
       }
     });
     if (!result.ok) throw Error(result.error || "送信できませんでした。");
+    $("inquiryForm").reset();
     $("inquiryId").textContent = result.inquiryId;
     $("inquiryCreatedAt").textContent = result.createdAt;
     show("inquiryComplete");
@@ -296,6 +312,7 @@ async function apiJson(data) {
 
 function renderInquiryAdmin_(result) {
   const inquiry = result.inquiry || {};
+  currentInquiryId = inquiry.inquiryId || currentInquiryId;
   $("adminInquiryId").textContent = inquiry.inquiryId || "";
   $("adminCreatedAt").textContent = inquiry.createdAt || "";
   $("adminMember").textContent = (inquiry.name || "") + (inquiry.memberId ? "（" + inquiry.memberId + "）" : "");
@@ -328,7 +345,7 @@ async function submitInquiryAdminAction_(fn) {
     otherButton.disabled = true;
     button.textContent = isSend ? "送信しています…" : "保存しています…";
     const result = await apiJson({
-      api:"1", fn:fn, idToken, inquiryId:launchParams.id,
+      api:"1", fn:fn, idToken, inquiryId:currentInquiryId,
       input:{
         assignedTo:$("adminAssignedTo").value,
         status:$("adminStatus").value,
@@ -458,3 +475,80 @@ function renderNewsArticle(item) {
   }
   viewer.setText(item.contentHtml || item.body || "");
 }
+
+let currentInquiryId = launchParams.id;
+let editingFaq = {id:"",revision:0};
+function configureInquiryTabs_(allowed) {
+  $("inquiryTabs").classList.toggle("hidden", !allowed);
+}
+$("memberTab").onclick = () => show("inquiryHome");
+$("manageTab").onclick = () => loadInquiryList_();
+for (const label of ["FAQ","質問","意見","連絡","情報提供"]) {
+  const button = document.createElement("button");
+  button.type = "button";button.className = "button secondaryButton";button.textContent = label;
+  button.onclick = () => {
+    if (label === "FAQ") {loadFaq_(false);return;}
+    $("inquiryCategory").value = label;$("inquiryFormTitle").textContent = label;show("inquiry");
+  };
+  $("inquiryEntrances").appendChild(button);
+}
+async function inquiryRequest_(fn, extra = {}) {
+  const result = await apiJson({api:"1",fn,idToken,...extra});
+  if (!result.ok) throw Error(result.error || "読み込みできませんでした。");
+  return result;
+}
+async function loadInquiryList_() {
+  show("inquiryList");$("inquiryListItems").textContent="読み込み中…";$("inquiryListError").textContent="";
+  try {
+    const result=await inquiryRequest_("inquiryList");
+    if(visibleScreen === "inquiryList") renderInquiryList_(result);
+  }
+  catch(error) {$("inquiryListItems").textContent="";$("inquiryListError").textContent=error.message;}
+}
+function renderInquiryList_(result) {
+  show("inquiryList");const list=$("inquiryListItems");list.replaceChildren();
+  if (!result.inquiries.length) list.textContent="問い合わせはまだありません。";
+  for (const item of result.inquiries) {
+    const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
+    button.textContent=`${item.createdAt} / ${item.category} / ${item.status}\n${item.subject}`;
+    button.onclick=async () => {
+      button.disabled=true;
+      try {
+        const result=await api({action:"resolve",view:"inquiry-admin",id:item.inquiryId,idToken});
+        if(visibleScreen === "inquiryList") handleResolve(result);
+      }
+      catch(error) {$("inquiryListError").textContent=error.message;}
+      finally {button.disabled=false;}
+    };list.appendChild(button);
+  }
+}
+async function loadFaq_(manage) {
+  show(manage ? "faqManage" : "inquiryFaq");
+  const list=$(manage ? "faqManageItems" : "faqItems");list.textContent="読み込み中…";
+  if (manage) {resetFaq_();$("faqManageError").textContent="";}
+  try {
+    const result=await inquiryRequest_("faqList",{manage});list.replaceChildren();
+    if (!result.items.length) list.textContent=manage ? "FAQはまだ登録されていません。" : "現在公開されているFAQはありません。質問からお問い合わせください。";
+    for(const item of result.items) {
+      if(manage) {
+        const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
+        button.textContent=(item.published ? "公開中：" : "下書き：")+item.question;
+        button.onclick=()=>{editingFaq={id:item.id,revision:item.revision};$("faqQuestion").value=item.question;$("faqAnswer").value=item.answer;$("faqPublished").checked=item.published;};list.appendChild(button);
+      } else {
+        const details=document.createElement("details"),summary=document.createElement("summary"),answer=document.createElement("p");
+        summary.textContent=item.question;answer.textContent=item.answer;answer.style.whiteSpace="pre-wrap";details.append(summary,answer);list.appendChild(details);
+      }
+    }
+  } catch(error) {list.textContent=error.message;}
+}
+function resetFaq_(){editingFaq={id:"",revision:0};$("faqEditForm").reset();}
+$("faqManageButton").onclick=()=>loadFaq_(true);
+$("newFaq").onclick=resetFaq_;
+$("faqEditForm").onsubmit=async event=>{
+  event.preventDefault();const button=$("faqSaveButton");button.disabled=true;$("faqManageError").textContent="";
+  try {
+    await inquiryRequest_("faqSave",{input:{...editingFaq,question:$("faqQuestion").value,answer:$("faqAnswer").value,published:$("faqPublished").checked}});
+    await loadFaq_(true);
+  } catch(error) {$("faqManageError").textContent=error.message;}
+  finally {button.disabled=false;}
+};

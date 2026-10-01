@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20260928-date-width1"></head>
+<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20261001-inquiry1"></head>
 <body><main>
   <header><b>宗心会</b><span>会員ポータル</span></header>
   <section id="loading" class="card"><div class="spinner"></div><p>LINEで本人確認しています</p></section>
@@ -24,19 +24,17 @@
     <a id="applicationLink" class="subLink hidden">会員登録申請がまだの方はこちら</a>
   </section>
   <section id="confirm" class="card hidden"><h1>登録内容の確認</h1><p id="confirmText"></p><button id="confirmButton" class="button">この内容で登録する</button></section>
+  <nav id="inquiryTabs" class="card hidden" aria-label="問い合わせ切り替え"><button id="memberTab" class="button" type="button">会員用</button> <button id="manageTab" class="button secondaryButton" type="button">管理用</button></nav>
+  <section id="inquiryHome" class="card hidden"><h1>お問い合わせ</h1><p>ご用件を選んでください。</p><div id="inquiryEntrances"></div></section>
+  <section id="inquiryFaq" class="card hidden"><h1>よくある質問（FAQ）</h1><div id="faqItems"></div><button type="button" class="button secondaryButton" onclick="show('inquiryHome')">問い合わせトップへ</button></section>
+  <section id="inquiryList" class="card hidden"><h1>問い合わせ管理</h1><button id="faqManageButton" class="button secondaryButton" type="button">FAQ管理</button><div id="inquiryListItems"></div><p id="inquiryListError" class="error" role="alert"></p></section>
+  <section id="faqManage" class="card hidden"><h1>FAQ管理</h1><button id="newFaq" type="button" class="button secondaryButton">新規FAQ</button><div id="faqManageItems"></div><form id="faqEditForm"><label>質問<input id="faqQuestion" required maxlength="200"></label><label>回答<textarea id="faqAnswer" required maxlength="5000" rows="8"></textarea></label><label class="radioLabel"><input id="faqPublished" type="checkbox">公開する</label><button id="faqSaveButton" class="button" type="submit">保存する</button></form><p id="faqManageError" class="error" role="alert"></p></section>
   <section id="inquiry" class="card hidden">
-    <h1>ご意見・情報提供</h1>
-    <p class="formLead">宗心会の運営へのご意見・ご提案、資料や写真などの情報をお寄せください。会員情報はLINE認証から取得します。</p>
+    <button type="button" class="subLink" onclick="show('inquiryHome')">問い合わせトップへ</button><h1 id="inquiryFormTitle">お問い合わせ</h1>
+    <p class="formLead">宗心会への質問・意見・連絡や、資料・写真などの情報をお寄せください。会員情報はLINE認証から取得します。</p>
     <form id="inquiryForm">
       <label for="inquiryCategory">ご用件の種類</label>
-      <select id="inquiryCategory" required>
-        <option value="">選択してください</option>
-        <option>選挙についての質問・意見</option>
-        <option>宗心会運営についての質問・意見</option>
-        <option>提案・要望</option>
-        <option>資料・写真・情報の提供</option>
-        <option>その他のお問い合わせ</option>
-      </select>
+      <select id="inquiryCategory" required><option>質問</option><option>意見</option><option>連絡</option><option>情報提供</option></select>
       <label for="inquirySubject">件名</label>
       <input id="inquirySubject" maxlength="100" required placeholder="内容が分かる短い件名">
       <label for="inquiryBody">本文</label>
@@ -58,7 +56,7 @@
     <dl class="memberSummary"><div><dt>受付番号</dt><dd id="inquiryId"></dd></div><div><dt>受付日時</dt><dd id="inquiryCreatedAt"></dd></div></dl>
   </section>
   <section id="inquiryAdmin" class="card hidden">
-    <p class="statusEyebrow">役員用</p><h1>問い合わせ詳細・回答</h1>
+    <button type="button" class="subLink" onclick="loadInquiryList_()">問い合わせ一覧へ</button><p class="statusEyebrow">役員用</p><h1>問い合わせ詳細・回答</h1>
     <dl class="inquiryDetail">
       <div><dt>受付番号</dt><dd id="adminInquiryId"></dd></div>
       <div><dt>受付日時</dt><dd id="adminCreatedAt"></dd></div>
@@ -109,4 +107,4 @@
       </div>
     </div>
   </div>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20260926-prod1"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261001-inquiry1"></script></body></html>

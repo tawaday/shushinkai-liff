@@ -45,3 +45,6 @@
   min-height: 1.25em;
   text-align: left;
 }
+
+/* 問い合わせの会員用・管理用切り替え */
+#inquiryTabs:not(.hidden){display:flex;gap:10px;padding:12px}#inquiryTabs .button{margin:0;flex:1}#inquiryEntrances .button{margin-top:12px}#faqItems details{padding:14px 0;border-bottom:1px solid #eadfd6}#faqItems summary{cursor:pointer;font-weight:600}#faqManageItems .button,#inquiryListItems .button{white-space:pre-wrap;text-align:left}
