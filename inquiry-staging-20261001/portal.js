@@ -7,7 +7,9 @@ let idToken = "";
 let confirmationToken = "";
 const $ = id => document.getElementById(id);
 const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage"];
+let visibleScreen = "loading";
 const show = id => {
+  visibleScreen = id;
   screenIds.forEach(x => $(x).classList.toggle("hidden", x !== id));
   const managing = ["inquiryAdmin","inquiryList","faqManage"].includes(id);
   for (const [tab, selected] of [["memberTab",!managing],["manageTab",managing]]) {
@@ -503,7 +505,10 @@ async function inquiryRequest_(fn, extra = {}) {
 }
 async function loadInquiryList_() {
   show("inquiryList");$("inquiryListItems").textContent="読み込み中…";$("inquiryListError").textContent="";
-  try {renderInquiryList_(await inquiryRequest_("inquiryList"));}
+  try {
+    const result=await inquiryRequest_("inquiryList");
+    if(visibleScreen === "inquiryList") renderInquiryList_(result);
+  }
   catch(error) {$("inquiryListItems").textContent="";$("inquiryListError").textContent=error.message;}
 }
 function renderInquiryList_(result) {
@@ -514,7 +519,10 @@ function renderInquiryList_(result) {
     button.textContent=`${item.createdAt} / ${item.category} / ${item.status}\n${item.subject}`;
     button.onclick=async () => {
       button.disabled=true;
-      try {handleResolve(await api({action:"resolve",view:"inquiry-admin",id:item.inquiryId,idToken}));}
+      try {
+        const result=await api({action:"resolve",view:"inquiry-admin",id:item.inquiryId,idToken});
+        if(visibleScreen === "inquiryList") handleResolve(result);
+      }
       catch(error) {$("inquiryListError").textContent=error.message;}
       finally {button.disabled=false;}
     };list.appendChild(button);
