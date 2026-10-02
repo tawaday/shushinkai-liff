@@ -39,6 +39,25 @@ const launchParams = (() => {
   };
 })();
 
+// 入口の機能名だけを表示し、認証や遷移には使用しない。
+const portalSubtitles = new Map([
+  ["card", "会員証"],
+  ["profile", "会員情報"],
+  ["register", "会員登録"],
+  ["news", "お知らせ"],
+  ["news-admin", "お知らせ編集"],
+  ["profile-news", "お知らせ編集"],
+  ["contact", "問い合わせ"],
+  ["inquiry", "問い合わせ"],
+  ["inquiry-admin", "問い合わせ管理"],
+  ["payment", "会計一覧"],
+  ["reception", "QR受付"],
+  ["reminder", "リマインド管理"],
+  ["election-admin", "選挙管理"],
+  ["vote", "電子投票"]
+]);
+$("portalSubtitle").textContent = portalSubtitles.get(launchParams.view) || "会員ポータル";
+
 document.addEventListener("DOMContentLoaded", start);
 
 async function start() {
