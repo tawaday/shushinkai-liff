@@ -291,6 +291,9 @@ $("inquiryForm").addEventListener("submit", async event => {
       api:"1", fn:"inquirySubmit", idToken,
       inquiry:{
         category:$("inquiryCategory").value,
+        contactKind:$("contactKind").disabled ? "" : $("contactKind").value,
+        publicationScope:$("publicationScope").disabled ? "" : $("publicationScope").value,
+        faqSearchKeyword:faqContext.keyword,sourceFaqId:faqContext.id,sourceFaqTitle:faqContext.title,
         subject:$("inquirySubject").value,
         body:$("inquiryBody").value,
         responseRequested:responseChoice && responseChoice.value === "true",
@@ -298,7 +301,7 @@ $("inquiryForm").addEventListener("submit", async event => {
       }
     });
     if (!result.ok) throw Error(result.error || "送信できませんでした。");
-    $("inquiryForm").reset();
+    $("inquiryForm").reset();faqContext={keyword:"",id:"",title:""};
     $("inquiryId").textContent = result.inquiryId;
     $("inquiryCreatedAt").textContent = result.createdAt;
     show("inquiryComplete");
@@ -339,7 +342,16 @@ function renderInquiryAdmin_(result) {
   $("adminSubject").textContent = inquiry.subject || "";
   $("adminBody").textContent = inquiry.body || "";
   $("adminResponseRequested").textContent = inquiry.responseRequested ? "希望する" : "希望しない";
-  $("adminAssignedTo").value = inquiry.assignedTo || (result.operator && result.operator.name || "");
+  if(result.officers) inquiryOfficers=result.officers;
+  const assigned=$("adminAssignedTo"),selected=inquiry.assignedTo || (result.operator && result.operator.name || "");
+  assigned.replaceChildren(new Option("未割当",""));
+  const names=[...new Set(inquiryOfficers.map(x=>x.name))];
+  for(const name of names) assigned.add(new Option(name,name));
+  if(selected && !names.includes(selected)) assigned.add(new Option(selected+"（既存担当者）",selected));
+  assigned.value=selected;
+  $("adminMetadata").textContent=[inquiry.contactKind,inquiry.publicationScope].filter(Boolean).join(" / ")||"未記録";
+  $("adminFaqSource").textContent=[inquiry.faqSearchKeyword,inquiry.sourceFaqTitle,inquiry.sourceFaqId].filter(Boolean).join(" / ")||"なし";
+  $("adminFaqCandidate").classList.toggle("hidden",inquiry.category!=="質問");
   $("adminStatus").value = inquiry.status || "受付中";
   $("adminResponseText").value = inquiry.responseText || "";
   const attachment = $("adminAttachment");
@@ -502,13 +514,30 @@ function configureInquiryTabs_(allowed) {
 }
 $("memberTab").onclick = () => show("inquiryHome");
 $("manageTab").onclick = () => loadInquiryList_();
-for (const label of ["FAQ","質問","意見","連絡","情報提供"]) {
-  const button = document.createElement("button");
-  button.type = "button";button.className = "button secondaryButton";button.textContent = label;
-  button.onclick = () => {
-    if (label === "FAQ") {loadFaq_(false);return;}
-    $("inquiryCategory").value = label;$("inquiryFormTitle").textContent = label;show("inquiry");
-  };
+let faqContext={keyword:"",id:"",title:""};
+let faqItems=[];
+let inquiryOfficers=[];
+const inquiryDescriptions={
+  "質問":"FAQで解決しないことや、宗心会についてのご質問を事務局へお送りください。",
+  "意見・連絡":"事務局へのご連絡、ご意見・ご要望はこちらからお願いします。種類を選んでお送りください。",
+  "情報提供":"宗心会に関する資料・写真・情報をお寄せください。提供内容と添付資料の公開範囲を選択してください。"
+};
+function openInquiryForm_(label,context) {
+  faqContext=context || {keyword:"",id:"",title:""};
+  $("inquiryCategory").value=label==="意見・連絡" ? ($("contactKind").value==="事務局への連絡" ? "連絡" : "意見") : label;
+  $("inquiryFormTitle").textContent=label;$("inquiryFormLead").textContent=inquiryDescriptions[label];
+  $("contactKindField").classList.toggle("hidden",label!=="意見・連絡");
+  $("contactKind").required=label==="意見・連絡";$("contactKind").disabled=label!=="意見・連絡";
+  $("publicationScopeField").classList.toggle("hidden",label!=="情報提供");
+  $("publicationScope").required=label==="情報提供";$("publicationScope").disabled=label!=="情報提供";
+  if(context) $("inquirySubject").value=(context.keyword || context.title || "FAQについての質問").slice(0,100);
+  show("inquiry");window.scrollTo(0,0);
+}
+$("contactKind").onchange=()=>{$("inquiryCategory").value=$("contactKind").value==="事務局への連絡" ? "連絡" : "意見";};
+for (const [label,description] of [["FAQ","よくある質問・使い方"],["質問","事務局に質問する"],["意見・連絡","ご意見・事務局へのご連絡"],["情報提供","資料・写真・情報を提供する"]]) {
+  const button=document.createElement("button");button.type="button";button.className="button secondaryButton entranceButton";
+  const title=document.createElement("strong"),sub=document.createElement("span");title.textContent=label;sub.textContent=description;button.append(title,sub);
+  button.onclick=()=>label==="FAQ" ? loadFaq_(false) : openInquiryForm_(label);
   $("inquiryEntrances").appendChild(button);
 }
 async function inquiryRequest_(fn, extra = {}) {
@@ -529,7 +558,11 @@ function renderInquiryList_(result) {
   if (!result.inquiries.length) list.textContent="問い合わせはまだありません。";
   for (const item of result.inquiries) {
     const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
-    button.textContent=`${item.createdAt} / ${item.category} / ${item.status}\n${item.subject}`;
+    const badge=document.createElement("span"),text=document.createElement("span");
+    const answered=item.status==="回答済" || item.responseSentAt;
+    badge.className="statusBadge "+(answered ? "answered" : item.status==="対応中" ? "working" : item.responseRequested && item.status!=="保管" ? "needsResponse" : "");
+    badge.textContent=item.status+(item.responseRequested && !answered && item.status!=="保管" ? "・要回答" : "");
+    text.textContent=`${item.createdAt} / ${item.category}\n${item.subject}`;button.append(badge,text);
     button.onclick=async () => {
       button.disabled=true;
       try {
@@ -542,31 +575,58 @@ function renderInquiryList_(result) {
   }
 }
 async function loadFaq_(manage) {
-  show(manage ? "faqManage" : "inquiryFaq");
-  const list=$(manage ? "faqManageItems" : "faqItems");list.textContent="読み込み中…";
-  if (manage) {resetFaq_();$("faqManageError").textContent="";}
+  const screen=manage ? "faqManage" : "inquiryFaq";
+  show(screen);const list=$(manage ? "faqManageItems" : "faqItems");list.textContent="読み込み中…";
+  if(manage) {resetFaq_();$("faqManageError").textContent="";}
   try {
-    const result=await inquiryRequest_("faqList",{manage});list.replaceChildren();
-    if (!result.items.length) list.textContent=manage ? "FAQはまだ登録されていません。" : "現在公開されているFAQはありません。質問からお問い合わせください。";
+    const result=await inquiryRequest_("faqList",{manage});
+    if(visibleScreen!==screen) return;
+    if(!manage) {faqItems=result.items;renderMemberFaq_();return;}
+    list.replaceChildren();
+    if(!result.items.length) list.textContent="FAQはまだ登録されていません。";
     for(const item of result.items) {
-      if(manage) {
-        const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
-        button.textContent=(item.published ? "公開中：" : "下書き：")+item.question;
-        button.onclick=()=>{editingFaq={id:item.id,revision:item.revision};$("faqQuestion").value=item.question;$("faqAnswer").value=item.answer;$("faqPublished").checked=item.published;};list.appendChild(button);
-      } else {
-        const details=document.createElement("details"),summary=document.createElement("summary"),answer=document.createElement("p");
-        summary.textContent=item.question;answer.textContent=item.answer;answer.style.whiteSpace="pre-wrap";details.append(summary,answer);list.appendChild(details);
-      }
+      const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
+      button.textContent=(item.published ? "公開中" : item.state==="candidate" ? "候補" : "下書き")+" / "+item.category+"："+item.question;
+      button.onclick=()=>{editingFaq={id:item.id,revision:item.revision};$("faqQuestion").value=item.question;$("faqAnswer").value=item.answer;$("faqCategory").value=item.category;$("faqKeywords").value=item.keywords;$("faqPublished").checked=item.published;$("faqEditForm").scrollIntoView({behavior:"smooth"});};list.appendChild(button);
     }
-  } catch(error) {list.textContent=error.message;}
+  } catch(error) {if(visibleScreen===screen) list.textContent=error.message;}
 }
+function normalizeFaqSearch_(text) {return String(text||"").normalize("NFKC").toLocaleLowerCase("ja");}
+function renderMemberFaq_() {
+  const list=$("faqItems"),keyword=$("faqSearch").value.trim();list.replaceChildren();
+  const terms=normalizeFaqSearch_(keyword).split(/\s+/).filter(Boolean);
+  const matches=faqItems.filter(item=>terms.every(term=>normalizeFaqSearch_([item.category,item.question,item.answer,item.keywords].join(" ")).includes(term)));
+  $("faqSearchCount").textContent=matches.length+"件";
+  if(!matches.length) {const p=document.createElement("p");p.textContent="該当するFAQがありません。質問から事務局へお問い合わせください。";const button=document.createElement("button");button.type="button";button.className="button";button.textContent="質問する";button.onclick=()=>openInquiryForm_("質問",{keyword,id:"",title:""});list.append(p,button);return;}
+  const groups=new Map();for(const item of matches) {const category=item.category||"その他";if(!groups.has(category)) groups.set(category,[]);groups.get(category).push(item);}
+  for(const [category,items] of groups) {
+    const heading=document.createElement("h2");heading.textContent=category;list.appendChild(heading);
+    for(const item of items) {
+      const details=document.createElement("details"),summary=document.createElement("summary"),answer=document.createElement("p"),choices=document.createElement("fieldset"),legend=document.createElement("legend");
+      summary.textContent=item.question;answer.textContent=item.answer;answer.style.whiteSpace="pre-wrap";legend.textContent="解決しましたか？";choices.appendChild(legend);
+      const ask=document.createElement("button");ask.type="button";ask.className="button hidden";ask.textContent="解決しないので質問する";
+      ask.onclick=()=>openInquiryForm_("質問",{keyword:$("faqSearch").value.trim(),id:item.id,title:item.question});
+      for(const [value,label] of [["yes","解決した"],["no","解決しない"]]) {
+        const row=document.createElement("label"),radio=document.createElement("input");row.className="radioLabel";radio.type="radio";radio.name="faq-resolution-"+item.id;radio.value=value;radio.onchange=()=>ask.classList.toggle("hidden",value!=="no");row.append(radio,document.createTextNode(label));choices.appendChild(row);
+      }
+      details.append(summary,answer,choices,ask);list.appendChild(details);
+    }
+  }
+}
+$("faqSearch").oninput=renderMemberFaq_;
+$("adminFaqCandidate").onclick=async()=>{
+  const button=$("adminFaqCandidate");button.disabled=true;$("adminError").textContent="";
+  try {const result=await inquiryRequest_("faqCandidate",{inquiryId:currentInquiryId,input:{responseText:$("adminResponseText").value}});$("adminStatusMessage").textContent=result.alreadyExists ? "この質問のFAQ候補は登録済みです。FAQ管理で確認してください。" : "非公開のFAQ候補を登録しました。FAQ管理で内容を整えてから公開してください。";}
+  catch(error) {$("adminError").textContent=error.message;}
+  finally {button.disabled=false;}
+};
 function resetFaq_(){editingFaq={id:"",revision:0};$("faqEditForm").reset();}
 $("faqManageButton").onclick=()=>loadFaq_(true);
 $("newFaq").onclick=resetFaq_;
 $("faqEditForm").onsubmit=async event=>{
   event.preventDefault();const button=$("faqSaveButton");button.disabled=true;$("faqManageError").textContent="";
   try {
-    await inquiryRequest_("faqSave",{input:{...editingFaq,question:$("faqQuestion").value,answer:$("faqAnswer").value,published:$("faqPublished").checked}});
+    await inquiryRequest_("faqSave",{input:{...editingFaq,question:$("faqQuestion").value,answer:$("faqAnswer").value,category:$("faqCategory").value,keywords:$("faqKeywords").value,published:$("faqPublished").checked}});
     await loadFaq_(true);
   } catch(error) {$("faqManageError").textContent=error.message;}
   finally {button.disabled=false;}

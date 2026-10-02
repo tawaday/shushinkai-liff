@@ -48,3 +48,16 @@
 
 /* 問い合わせの会員用・管理用切り替え */
 #inquiryTabs:not(.hidden){display:flex;gap:10px;padding:12px}#inquiryTabs .button{margin:0;flex:1}#inquiryEntrances .button{margin-top:12px}#faqItems details{padding:14px 0;border-bottom:1px solid #eadfd6}#faqItems summary{cursor:pointer;font-weight:600}#faqManageItems .button,#inquiryListItems .button{white-space:pre-wrap;text-align:left}
+
+/* 問い合わせUI v2：スマートフォンの縦画面向け */
+#inquiryEntrances .entranceButton{margin-top:10px;padding:13px 16px;text-align:left;min-height:66px}
+.entranceButton strong,.entranceButton span{display:block}.entranceButton strong{font-size:18px}.entranceButton span{font-size:13px;font-weight:400;margin-top:4px;line-height:1.5}
+#inquiry .inquiryBack{margin:0 0 20px;min-height:48px}.inquiryBack{min-height:48px}
+.manageButton{background:#eaded4;color:#721515;border:1px solid #cbb8ab}
+#faqItems h2{font-size:18px;margin:22px 0 4px;color:#721515}#faqItems summary{min-height:40px;line-height:1.6}#faqItems details{overflow-wrap:anywhere}
+#faqItems .radioLabel{min-height:44px;margin:4px 0}#faqItems fieldset{padding:12px;background:#f7f2ec;border-radius:10px}
+#inquiryListItems .button{display:flex;align-items:flex-start;gap:10px;margin-top:12px;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.statusBadge{display:inline-block;flex-shrink:0;border-radius:6px;padding:4px 7px;background:#ddd5cf;font-size:12px;white-space:normal;max-width:95px}
+.statusBadge.needsResponse{background:#ead3d3;color:#721515}.statusBadge.working{background:#eee0c5;color:#614311}.statusBadge.answered{background:#dce8dc;color:#28582d}
+#inquiry .formLead{margin-bottom:16px}#faqManageItems .button{overflow-wrap:anywhere}
+@media(max-width:420px){#inquiryHome,#inquiry,#inquiryFaq,#inquiryList,#faqManage,#inquiryAdmin{padding:20px}}

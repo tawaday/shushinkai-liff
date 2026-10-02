@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20261003-subtitle-size1"></head>
+<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20261003-inquiry-v2"></head>
 <body><main>
   <header><b>宗心会</b><span id="portalSubtitle">会員ポータル</span></header>
   <section id="loading" class="card"><div class="spinner"></div><p>LINEで本人確認しています</p></section>
@@ -26,15 +26,16 @@
   <section id="confirm" class="card hidden"><h1>登録内容の確認</h1><p id="confirmText"></p><button id="confirmButton" class="button">この内容で登録する</button></section>
   <nav id="inquiryTabs" class="card hidden" aria-label="問い合わせ切り替え"><button id="memberTab" class="button" type="button">会員用</button> <button id="manageTab" class="button secondaryButton" type="button">管理用</button></nav>
   <section id="inquiryHome" class="card hidden"><h1>お問い合わせ</h1><p>ご用件を選んでください。</p><div id="inquiryEntrances"></div></section>
-  <section id="inquiryFaq" class="card hidden"><h1>よくある質問（FAQ）</h1><div id="faqItems"></div><button type="button" class="button secondaryButton" onclick="show('inquiryHome')">問い合わせトップへ</button></section>
-  <section id="inquiryList" class="card hidden"><h1>問い合わせ管理</h1><button id="faqManageButton" class="button secondaryButton" type="button">FAQ管理</button><div id="inquiryListItems"></div><p id="inquiryListError" class="error" role="alert"></p></section>
-  <section id="faqManage" class="card hidden"><h1>FAQ管理</h1><button id="newFaq" type="button" class="button secondaryButton">新規FAQ</button><div id="faqManageItems"></div><form id="faqEditForm"><label>質問<input id="faqQuestion" required maxlength="200"></label><label>回答<textarea id="faqAnswer" required maxlength="5000" rows="8"></textarea></label><label class="radioLabel"><input id="faqPublished" type="checkbox">公開する</label><button id="faqSaveButton" class="button" type="submit">保存する</button></form><p id="faqManageError" class="error" role="alert"></p></section>
+  <section id="inquiryFaq" class="card hidden"><h1>よくある質問（FAQ）</h1><label for="faqSearch">キーワード検索</label><input id="faqSearch" type="search" maxlength="500" placeholder="質問・回答・種別から検索"><p id="faqSearchCount" class="hint" role="status"></p><div id="faqItems"></div><button type="button" class="button secondaryButton inquiryBack" onclick="show('inquiryHome')">問い合わせトップへ</button></section>
+  <section id="inquiryList" class="card hidden"><h1>問い合わせ管理</h1><button id="faqManageButton" class="button manageButton" type="button">FAQ管理</button><div id="inquiryListItems"></div><p id="inquiryListError" class="error" role="alert"></p></section>
+  <section id="faqManage" class="card hidden"><h1>FAQ管理</h1><button id="newFaq" type="button" class="button secondaryButton">新規FAQ</button><div id="faqManageItems"></div><form id="faqEditForm"><label>種別<input id="faqCategory" maxlength="100" placeholder="例：会員登録、投票、使い方"></label><label>検索キーワード<input id="faqKeywords" maxlength="500"></label><label>質問<textarea id="faqQuestion" required maxlength="5200" rows="4"></textarea></label><label>回答<textarea id="faqAnswer" required maxlength="5000" rows="8"></textarea></label><label class="radioLabel"><input id="faqPublished" type="checkbox">公開する</label><button id="faqSaveButton" class="button" type="submit">保存する</button></form><p id="faqManageError" class="error" role="alert"></p></section>
   <section id="inquiry" class="card hidden">
-    <button type="button" class="subLink" onclick="show('inquiryHome')">問い合わせトップへ</button><h1 id="inquiryFormTitle">お問い合わせ</h1>
-    <p class="formLead">宗心会への質問・意見・連絡や、資料・写真などの情報をお寄せください。会員情報はLINE認証から取得します。</p>
+    <button type="button" class="button secondaryButton inquiryBack" onclick="show('inquiryHome')">問い合わせトップへ</button><h1 id="inquiryFormTitle">お問い合わせ</h1>
+    <p id="inquiryFormLead" class="formLead"></p>
     <form id="inquiryForm">
-      <label for="inquiryCategory">ご用件の種類</label>
-      <select id="inquiryCategory" required><option>質問</option><option>意見</option><option>連絡</option><option>情報提供</option></select>
+      <input id="inquiryCategory" type="hidden" value="質問">
+      <div id="contactKindField" class="hidden"><label for="contactKind">種類</label><select id="contactKind"><option value="">選択してください</option><option>ご意見・ご要望</option><option>事務局への連絡</option><option>その他</option></select></div>
+      <div id="publicationScopeField" class="hidden"><label for="publicationScope">資料・写真・情報の公開範囲</label><select id="publicationScope"><option value="">選択してください</option><option>会員向け資料室で公開してよい</option><option>役員のみ閲覧可</option><option>公開について事務局と相談したい</option></select><p class="hint">添付資料もこの選択に従って取り扱います。送信だけで資料室に自動公開されることはありません。</p></div>
       <label for="inquirySubject">件名</label>
       <input id="inquirySubject" maxlength="100" required placeholder="内容が分かる短い件名">
       <label for="inquiryBody">本文</label>
@@ -64,12 +65,13 @@
       <div><dt>カテゴリ</dt><dd id="adminCategory"></dd></div>
       <div><dt>件名</dt><dd id="adminSubject"></dd></div>
       <div><dt>本文</dt><dd id="adminBody"></dd></div>
+      <div><dt>種類・公開範囲</dt><dd id="adminMetadata"></dd></div><div><dt>参照FAQ</dt><dd id="adminFaqSource"></dd></div>
       <div><dt>回答希望</dt><dd id="adminResponseRequested"></dd></div>
     </dl>
     <a id="adminAttachment" class="button secondaryButton hidden" target="_blank" rel="noopener">添付ファイルを開く</a>
     <form id="inquiryAdminForm">
       <label for="adminAssignedTo">担当者</label>
-      <input id="adminAssignedTo" maxlength="100" placeholder="例：事務局 多和田">
+      <select id="adminAssignedTo"><option value="">未割当</option></select>
       <label for="adminStatus">対応状況</label>
       <select id="adminStatus" required>
         <option>受付中</option><option>役員共有済</option><option>対応中</option><option>回答済</option><option>保管</option>
@@ -80,6 +82,7 @@
         <button id="adminSave" class="button secondaryButton" type="button">下書き保存</button>
         <button id="adminSend" class="button" type="button">投稿者へ回答を送信</button>
       </div>
+      <button id="adminFaqCandidate" class="button manageButton hidden" type="button">FAQ候補として登録</button><p class="hint">候補は非公開で保存します。FAQ管理で個人情報を除き、内容を整えてから公開してください。</p>
       <p id="adminStatusMessage" class="formStatus" role="status"></p>
       <p id="adminError" class="error" role="alert"></p>
     </form>
@@ -107,4 +110,4 @@
       </div>
     </div>
   </div>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261002-subtitle1"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261003-inquiry-v2"></script></body></html>
