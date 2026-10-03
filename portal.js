@@ -577,17 +577,18 @@ function renderInquiryList_(result) {
 async function loadFaq_(manage) {
   const screen=manage ? "faqManage" : "inquiryFaq";
   show(screen);const list=$(manage ? "faqManageItems" : "faqItems");list.textContent="読み込み中…";
-  if(manage) {resetFaq_();$("faqManageError").textContent="";}
+  if(manage) {resetFaq_();$("faqManageError").textContent="";$("faqSaveButton").disabled=true;$("faqCategorySave").disabled=true;}
   try {
     const result=await inquiryRequest_("faqList",{manage});
     if(visibleScreen!==screen) return;
     if(!manage) {faqItems=result.items;renderMemberFaq_();return;}
+    faqCategories=result.categories||[];renderFaqCategories_();selectFaqCategory_("その他");$("faqSaveButton").disabled=false;$("faqCategorySave").disabled=false;
     list.replaceChildren();
     if(!result.items.length) list.textContent="FAQはまだ登録されていません。";
     for(const item of result.items) {
       const button=document.createElement("button");button.type="button";button.className="button secondaryButton";
       button.textContent=(item.published ? "公開中" : item.state==="candidate" ? "候補" : "下書き")+" / "+item.category+"："+item.question;
-      button.onclick=()=>{editingFaq={id:item.id,revision:item.revision};$("faqQuestion").value=item.question;$("faqAnswer").value=item.answer;$("faqCategory").value=item.category;$("faqKeywords").value=item.keywords;$("faqPublished").checked=item.published;$("faqEditForm").scrollIntoView({behavior:"smooth"});};list.appendChild(button);
+      button.onclick=()=>{editingFaq={id:item.id,revision:item.revision};$("faqQuestion").value=item.question;$("faqAnswer").value=item.answer;selectFaqCategory_(item.category,item.categoryId);$("faqKeywords").value=item.keywords;$("faqPublished").checked=item.published;$("faqEditForm").scrollIntoView({behavior:"smooth"});};list.appendChild(button);
     }
   } catch(error) {if(visibleScreen===screen) list.textContent=error.message;}
 }
@@ -620,14 +621,35 @@ $("adminFaqCandidate").onclick=async()=>{
   catch(error) {$("adminError").textContent=error.message;}
   finally {button.disabled=false;}
 };
-function resetFaq_(){editingFaq={id:"",revision:0};$("faqEditForm").reset();}
+function resetFaq_(){editingFaq={id:"",revision:0};$("faqEditForm").reset();selectFaqCategory_("その他");}
 $("faqManageButton").onclick=()=>loadFaq_(true);
 $("newFaq").onclick=resetFaq_;
 $("faqEditForm").onsubmit=async event=>{
   event.preventDefault();const button=$("faqSaveButton");button.disabled=true;$("faqManageError").textContent="";
   try {
-    await inquiryRequest_("faqSave",{input:{...editingFaq,question:$("faqQuestion").value,answer:$("faqAnswer").value,category:$("faqCategory").value,keywords:$("faqKeywords").value,published:$("faqPublished").checked}});
+    await inquiryRequest_("faqSave",{input:{...editingFaq,question:$("faqQuestion").value,answer:$("faqAnswer").value,category:$("faqCategory").selectedOptions[0]?.textContent||"その他",categoryId:$("faqCategory").selectedOptions[0]?.dataset.categoryId||"",keywords:$("faqKeywords").value,published:$("faqPublished").checked}});
     await loadFaq_(true);
   } catch(error) {$("faqManageError").textContent=error.message;}
+  finally {button.disabled=false;}
+};
+
+let faqCategories=[],editingFaqCategory={id:"",revision:0};
+function selectFaqCategory_(name,id) {
+  const select=$("faqCategory");select.replaceChildren();
+  for(const c of faqCategories) {const option=document.createElement("option");option.value=c.id;option.dataset.categoryId=c.id;option.textContent=c.name;select.appendChild(option);}
+  const selected=faqCategories.find(c=>id ? c.id===id : c.name===name || c.legacyName===name);
+  if(selected) select.value=selected.id;
+  else {const option=document.createElement("option");option.value="legacy:"+name;option.textContent=name;select.appendChild(option);select.value=option.value;}
+}
+function renderFaqCategories_() {
+  const list=$("faqCategoryItems");list.replaceChildren();
+  for(const c of faqCategories) {const button=document.createElement("button");button.type="button";button.className="button secondaryButton";button.textContent=c.sortOrder+"："+c.name;button.onclick=()=>{editingFaqCategory={id:c.id,revision:c.revision};$("faqCategoryName").value=c.name;$("faqCategoryOrder").value=c.sortOrder;};list.appendChild(button);}
+}
+$("faqCategoriesManage").onclick=()=>$("faqCategoriesPanel").classList.toggle("hidden");
+$("faqCategoryNew").onclick=()=>{editingFaqCategory={id:"",revision:0};$("faqCategoryForm").reset();$("faqCategoryOrder").value=Math.min(99999,Math.max(0,...faqCategories.map(c=>c.sortOrder))+10);};
+$("faqCategoryForm").onsubmit=async event=>{
+  event.preventDefault();const button=$("faqCategorySave");button.disabled=true;$("faqCategoryError").textContent="";
+  try {await inquiryRequest_("faqCategorySave",{input:{...editingFaqCategory,name:$("faqCategoryName").value,sortOrder:$("faqCategoryOrder").value}});await loadFaq_(true);$("faqCategoryNew").click();}
+  catch(error) {$("faqCategoryError").textContent=error.message;}
   finally {button.disabled=false;}
 };

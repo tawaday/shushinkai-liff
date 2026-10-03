@@ -61,3 +61,9 @@
 .statusBadge.needsResponse{background:#ead3d3;color:#721515}.statusBadge.working{background:#eee0c5;color:#614311}.statusBadge.answered{background:#dce8dc;color:#28582d}
 #inquiry .formLead{margin-bottom:16px}#faqManageItems .button{overflow-wrap:anywhere}
 @media(max-width:420px){#inquiryHome,#inquiry,#inquiryFaq,#inquiryList,#faqManage,#inquiryAdmin{padding:20px}}
+
+/* 回答操作の高さに上余白を含めず、FAQ候補との間隔を確保する。 */
+.adminActions{margin-top:22px}.adminActions .button{height:auto;margin-top:0}
+#adminFaqCandidate{margin-top:16px}
+#faqCategoriesPanel{margin-top:16px;padding:16px;background:#f7f2ec;border-radius:10px}
+#faqCategoryItems .button{text-align:left;overflow-wrap:anywhere}
