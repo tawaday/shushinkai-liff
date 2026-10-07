@@ -1,0 +1,1189 @@
+  // ===================================================
+  // 宗心会 電子投票 クライアント Ver.1.1
+  // ===================================================
+
+  const ELECTION_CLIENT_CONFIG = {
+    DEFAULT_ELECTION_ID: "chairman_2026",
+    LIFF_ID: "2010887632-4M5XI8d7",
+    LIFF_URL: "https://liff.line.me/2010887632-4M5XI8d7",
+    GAS_API_URL: "https://script.google.com/macros/s/AKfycbyYfVwfTY6p-2O0jBhWEeUVGLYtihMuSB0EdmO1bIByEK_hgh0fSb4IDBkJ151SElc/exec"
+  };
+
+
+  // Immutable for this page lifetime; authentication never decides whether a test becomes a real vote.
+  const IS_ELECTION_PREVIEW = window.INITIAL_ELECTION_PREVIEW === true ||
+    new URLSearchParams(window.location.search).get("preview") === "1";
+
+  function initializePreviewUI_() {
+    if (!IS_ELECTION_PREVIEW) return;
+    document.getElementById("previewBanner").classList.remove("hidden");
+    setText_("submitButton", "テスト完了");
+    document.querySelector("#confirmView .confirmTitle").textContent = "この内容でテストを完了します";
+    document.querySelector("#confirmView .finalWarning").textContent = "プレビューのため投票は記録されません。";
+    document.querySelector("#completeView .resultTitle").textContent = "プレビュー完了";
+    document.querySelector("#completeView .resultMessage").textContent = "プレビューのため投票は記録されません。";
+    document.querySelector("#completeView .privacyMessage").textContent = "投票状況は変更されていません。上部の終了ボタンから戻れます。";
+    document.querySelector("#sendingView .loadingText").textContent = "テスト内容を確認しています";
+  }
+
+  function handlePreviewComplete_(response) {
+    setSubmittingState_(false);
+    if (!response || response.ok !== true || response.preview !== true || response.recorded !== false) {
+      showError_(response && response.error || "プレビューを完了できませんでした。");
+      return;
+    }
+    showView_(ELECTION_VIEW.COMPLETE);
+    window.scrollTo(0, 0);
+  }
+
+  const ELECTION_VIEW = {
+    LOADING: "loadingView",
+    LINK: "linkIdentityView",
+    BEFORE: "beforeView",
+    PAUSED: "pausedView",
+    VOTE: "voteView",
+    CONFIRM: "confirmView",
+    SENDING: "sendingView",
+    COMPLETE: "completeView",
+    ALREADY: "alreadyVotedView",
+    CLOSED: "closedView",
+    NONE: "noElectionView",
+    INELIGIBLE: "ineligibleView",
+    ERROR: "errorView"
+  };
+
+
+  let currentElectionId = "";
+  let currentElection = null;
+  let currentOptions = [];
+  let currentConfidenceCandidate = null;
+  let currentWithdrawnCandidates = [];
+  let selectedOptionId = "";
+  let currentIdToken = "";
+  let isAuthenticating = false;
+  let shouldOpenLiffOnRetry = false;
+  let pageStateRequestTimer = null;
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    initializeElectionPage
+  );
+
+
+  // ===================================================
+  // 初期表示
+  // ===================================================
+
+  function initializeElectionPage() {
+    initializePreviewUI_();
+    currentElectionId =
+      getElectionIdFromUrl_() ||
+      ELECTION_CLIENT_CONFIG.DEFAULT_ELECTION_ID;
+
+    currentIdToken = "";
+    initializeLiffAuthentication_();
+  }
+
+
+  function getElectionIdFromUrl_() {
+    const injectedElectionId = String(
+      window.INITIAL_ELECTION_ID || ""
+    ).trim();
+
+    if (injectedElectionId) {
+      return injectedElectionId;
+    }
+
+    const params =
+      new URLSearchParams(window.location.search);
+
+    return String(
+      params.get("election") || ""
+    ).trim();
+  }
+
+
+  // ===================================================
+  // ページ状態読込
+  // ===================================================
+
+  function loadElectionPageState() {
+    showView_(ELECTION_VIEW.LOADING);
+
+    if (pageStateRequestTimer) {
+      clearTimeout(pageStateRequestTimer);
+    }
+
+    pageStateRequestTimer = setTimeout(function() {
+      pageStateRequestTimer = null;
+      showError_(
+        "選挙情報の読み込みに時間がかかっています。通信状態を確認して、再読み込みしてください。"
+      );
+    }, 20000);
+
+    const params = {
+      electionId: currentElectionId,
+      idToken: currentIdToken
+    };
+
+    callElectionApi_(IS_ELECTION_PREVIEW ? "getPreviewState" : "getPageState", params)
+      .then(handlePageStateLoaded_)
+      .catch(handleServerFailure_);
+  }
+
+
+  function handlePageStateLoaded_(response) {
+    if (pageStateRequestTimer) {
+      clearTimeout(pageStateRequestTimer);
+      pageStateRequestTimer = null;
+    }
+
+    if (response && (response.state === "paused" || response.noElection === true || response.state === "none")) {
+      clearElectionDisplay_();
+      if (response.state === "paused") showView_(ELECTION_VIEW.PAUSED);
+      else if (ELECTION_VIEW.NONE) showView_(ELECTION_VIEW.NONE);
+      else showError_("現在、公開されている選挙はありません。");
+      return;
+    }
+
+    if (response && response.notLinked === true && currentIdToken && !IS_ELECTION_PREVIEW) {
+      showView_(ELECTION_VIEW.LINK);
+      return;
+    }
+    if (!response || response.ok !== true) {
+      if (
+        response &&
+        response.authenticationError === true && !currentIdToken
+      ) {
+        initializeLiffAuthentication_();
+        return;
+      }
+
+      if (isNoElectionResponse_(response)) {
+        showView_(ELECTION_VIEW.NONE);
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      showError_(
+        response && response.error
+          ? response.error
+          : "選挙情報を読み込めませんでした。"
+      );
+      return;
+    }
+
+    if (IS_ELECTION_PREVIEW && response.preview !== true) {
+      showError_("プレビューを確認できません。選挙管理から開き直してください。");
+      return;
+    }
+
+    const data =
+      response.electionData || {};
+
+    currentElection =
+      data.election || {};
+
+    if (currentElection.electionId) {
+      currentElectionId = String(currentElection.electionId);
+    }
+
+    currentOptions =
+      data.options || [];
+
+    currentConfidenceCandidate =
+      data.confidenceCandidate || null;
+    currentWithdrawnCandidates = data.withdrawnCandidates || [];
+
+    selectedOptionId = "";
+
+    switch (response.state) {
+      case "before":
+        renderBeforeView_();
+        showView_(ELECTION_VIEW.BEFORE);
+        break;
+
+      case "closed":
+        renderClosedView_();
+        showView_(ELECTION_VIEW.CLOSED);
+        break;
+
+      case "already":
+        setText_(
+          "alreadyElectionTitle",
+          currentElection.title || "電子投票"
+        );
+        showView_(ELECTION_VIEW.ALREADY);
+        break;
+
+      case "ineligible":
+        setText_(
+          "ineligibleReason",
+          response.ineligibleReason ||
+            "現在の会員情報では投票できません。"
+        );
+        showView_(ELECTION_VIEW.INELIGIBLE);
+        break;
+
+      case "open":
+        if (!currentOptions.length) {
+          showError_(
+            "投票の選択肢が登録されていません。"
+          );
+          return;
+        }
+
+        renderElection_();
+        showView_(ELECTION_VIEW.VOTE);
+        break;
+
+      case "none":
+      case "unavailable":
+        showView_(ELECTION_VIEW.NONE);
+        break;
+
+      default:
+        showError_(
+          "選挙の状態を確認できませんでした。"
+        );
+    }
+
+    window.scrollTo(0, 0);
+  }
+
+  function isNoElectionResponse_(response) {
+    if (response && response.noElection === true) return true;
+    const message = String(response && response.error || "").trim();
+    return /選挙(?:情報)?.*(?:見つかりません|登録されていません|公開されていません|行われていません)/.test(message)
+      || /公開.*選挙.*(?:ありません|見つかりません)/.test(message);
+  }
+
+
+  // ===================================================
+  // LIFF認証
+  // ===================================================
+
+  async function initializeLiffAuthentication_() {
+    if (isAuthenticating) return;
+    isAuthenticating = true;
+    shouldOpenLiffOnRetry = false;
+    showView_(ELECTION_VIEW.LOADING);
+
+    try {
+      if (typeof liff === "undefined") {
+        throw new Error("LIFF SDKを読み込めませんでした。");
+      }
+
+      await liff.init({
+        liffId: ELECTION_CLIENT_CONFIG.LIFF_ID,
+        withLoginOnExternalBrowser: true
+      });
+
+      currentElectionId =
+        getElectionIdFromUrl_() ||
+        currentElectionId ||
+        ELECTION_CLIENT_CONFIG.DEFAULT_ELECTION_ID;
+
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      currentIdToken = String(
+        liff.getIDToken() || ""
+      ).trim();
+
+      if (!currentIdToken) {
+        shouldOpenLiffOnRetry = true;
+        showAuthenticationError_(
+          "LINEの認証情報を取得できませんでした。LINEの投票リンクから開き直してください。"
+        );
+        return;
+      }
+
+      ShushinkaiFriendship.check();
+      loadElectionPageState();
+
+    } catch (error) {
+      console.error("LIFF初期化エラー:", error);
+      shouldOpenLiffOnRetry = true;
+      showAuthenticationError_(
+        "LINE認証を開始できませんでした。LINEの投票リンクから開き直してください。"
+      );
+    } finally {
+      isAuthenticating = false;
+    }
+  }
+
+  function buildLiffElectionUrl_() {
+    return ELECTION_CLIENT_CONFIG.LIFF_URL +
+      "?election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&view=vote&preview=1" : "");
+  }
+
+  function showAuthenticationError_(message) {
+    setText_("errorMessage", message);
+    const button = document.getElementById("errorRetryButton");
+    if (button) button.textContent = "LINEで開き直す";
+    showView_(ELECTION_VIEW.ERROR);
+    window.scrollTo(0, 0);
+  }
+
+  function reloadElection() {
+    const button = document.getElementById("errorRetryButton");
+    if (button) button.textContent = "再読み込み";
+
+    if (shouldOpenLiffOnRetry) {
+      const liffUrl = buildLiffElectionUrl_();
+      try {
+        window.top.location.href = liffUrl;
+      } catch (error) {
+        window.location.href = liffUrl;
+      }
+      return;
+    }
+
+    currentIdToken = "";
+    initializeElectionPage();
+  }
+
+
+  // ===================================================
+  // 開始前・終了画面
+  // ===================================================
+
+  // Both views use the same public payload and explicit display field allowlist.
+  function publicCandidates_() {
+    return currentConfidenceCandidate ? [currentConfidenceCandidate] : currentOptions;
+  }
+
+  function appendPublicCandidate_(card, candidate) {
+      const name = candidate.name || candidate.candidateName || candidate.label || "";
+      const heading = document.createElement("h3");
+      heading.className = "confidenceCandidateName";
+      heading.textContent = name;
+      card.appendChild(heading);
+      const photo = String(candidate.photoUrl || "").trim();
+      if (/^https:\/\//i.test(photo) || /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo)) {
+        const image = document.createElement("img");
+        image.className = "announcementPhoto";
+        image.src = photo;
+        image.alt = name + "の候補者写真";
+        image.onerror = function() { image.remove(); };
+        card.appendChild(image);
+      }
+      [["所属道院", candidate.dojo], ["武法階等", candidate.rank],
+       ["立候補・推薦の区分", candidate.nominationType], ["プロフィール・経歴", candidate.profile],
+       ["推薦文", candidate.recommendation], ["所信", candidate.statement], ["公約", candidate.manifesto]]
+        .forEach(function(item) {
+          if (!String(item[1] || "").trim()) return;
+          const title = document.createElement("h4");
+          title.textContent = item[0];
+          const text = document.createElement("p");
+          text.textContent = item[1];
+          card.appendChild(title);
+          card.appendChild(text);
+        });
+  }
+
+  function renderVoteCandidates_() {
+    const list = document.getElementById("voteCandidates");
+    list.textContent = "";
+    publicCandidates_().forEach(function(candidate, index) {
+      const card = document.createElement("article");
+      card.className = "card announcementCandidate voteCandidate";
+      appendPublicCandidate_(card, candidate);
+      const heading = card.firstElementChild;
+      const panel = document.createElement("div");
+      panel.id = "voteCandidateDetails-" + index;
+      panel.className = "hidden";
+      while (heading.nextSibling) panel.appendChild(heading.nextSibling);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "candidateDetailsButton";
+      button.textContent = "詳細を見る";
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-controls", panel.id);
+      button.setAttribute("aria-label", (candidate.name || candidate.candidateName || candidate.label || "候補者") + "の詳細を見る");
+      button.addEventListener("click", function() {
+        const opening = panel.classList.contains("hidden");
+        panel.classList.toggle("hidden", !opening);
+        button.setAttribute("aria-expanded", String(opening));
+        button.textContent = opening ? "詳細を閉じる" : "詳細を見る";
+        button.setAttribute("aria-label", heading.textContent + (opening ? "の詳細を閉じる" : "の詳細を見る"));
+      });
+      card.appendChild(button);
+      card.appendChild(panel);
+      list.appendChild(card);
+    });
+  }
+
+  function renderBeforeView_() {
+    const election = currentElection || {};
+    setText_("announcementTitle", election.title || "電子投票");
+    setText_("announcementDescription", election.description || "");
+    setText_("announcementVoteType", { confidence: "信任投票", candidate: "候補者選挙" }[election.voteType] || election.voteType || "未設定");
+    setText_("beforePeriodText", [election.startAt, election.endAt].filter(Boolean).join(" ～ "));
+    setText_("announcementRule", election.resultRule || "未設定");
+    setText_("announcementResults", election.isResultPublic === true ? "公開する" : "公開しない");
+    setText_("beforeMessage", election.startAt ? "投票は" + election.startAt + "から開始します。" : "投票開始までお待ちください。");
+    const list = document.getElementById("announcementCandidates");
+    list.textContent = "";
+    publicCandidates_().forEach(function(candidate) {
+      const card = document.createElement("article");
+      card.className = "card announcementCandidate";
+      appendPublicCandidate_(card, candidate);
+      list.appendChild(card);
+    });
+    if (typeof renderWithdrawnCandidates_ === "function") renderWithdrawnCandidates_("beforeWithdrawnCandidates");
+  }
+
+  function clearElectionDisplay_() {
+    currentElection = null;
+    currentOptions = [];
+    currentConfidenceCandidate = null;
+    selectedOptionId = "";
+    if (typeof currentWithdrawnCandidates !== "undefined") currentWithdrawnCandidates = [];
+    document.getElementById("announcementCandidates").textContent = "";
+    document.getElementById("voteCandidates").textContent = "";
+    document.getElementById("optionList").textContent = "";
+    ["beforeView", "voteView", "confirmView", "closedView", "alreadyVotedView"].forEach(function(id) {
+      const view = document.getElementById(id);
+      view.querySelectorAll("[id]").forEach(function(element) {
+        if (element.tagName === "IMG") { element.removeAttribute("src"); element.classList.add("hidden"); }
+        else if (!element.children.length && !["BUTTON", "INPUT"].includes(element.tagName)) element.textContent = "";
+      });
+    });
+  }
+
+
+  function renderClosedView_() {
+    setText_(
+      "closedMessage",
+      "投票へのご協力ありがとうございました。"
+    );
+
+    renderStatePeriod_(
+      "closedPeriodBox",
+      "closedPeriodText",
+      String(
+        currentElection.startAt || ""
+      ).trim(),
+      String(
+        currentElection.endAt || ""
+      ).trim()
+    );
+  }
+
+
+  function renderStatePeriod_(
+    boxId,
+    textId,
+    startAt,
+    endAt
+  ) {
+    const box =
+      document.getElementById(boxId);
+
+    if (!startAt && !endAt) {
+      box.classList.add("hidden");
+      return;
+    }
+
+    let text = "";
+
+    if (startAt && endAt) {
+      text = startAt + " ～ " + endAt;
+    } else if (startAt) {
+      text = startAt + " から";
+    } else {
+      text = endAt + " まで";
+    }
+
+    setText_(textId, text);
+    box.classList.remove("hidden");
+  }
+
+
+  // ===================================================
+  // 投票画面
+  // ===================================================
+
+  function renderElection_() {
+    setText_(
+      "electionTitle",
+      currentElection.title ||
+        "電子投票"
+    );
+
+    setText_(
+      "electionDescription",
+      currentElection.description || ""
+    );
+
+    renderElectionPeriod_();
+    renderResultRule_();
+    renderStatusBadge_();
+    renderVoteCandidates_();
+    renderOptions_();
+    renderWithdrawnCandidates_("voteWithdrawnCandidates");
+
+    const confirmButton =
+      document.getElementById(
+        "confirmButton"
+      );
+
+    confirmButton.disabled = true;
+  }
+
+
+  function renderElectionPeriod_() {
+    const box =
+      document.getElementById(
+        "electionPeriod"
+      );
+
+    const startAt =
+      String(
+        currentElection.startAt || ""
+      ).trim();
+
+    const endAt =
+      String(
+        currentElection.endAt || ""
+      ).trim();
+
+    if (!startAt && !endAt) {
+      box.classList.add("hidden");
+      return;
+    }
+
+    let text = "";
+
+    if (startAt && endAt) {
+      text = startAt + " ～ " + endAt;
+    } else if (startAt) {
+      text = startAt + " から";
+    } else {
+      text = endAt + " まで";
+    }
+
+    setText_("periodText", text);
+    box.classList.remove("hidden");
+  }
+
+
+  function renderResultRule_() {
+    const box =
+      document.getElementById(
+        "resultRuleBox"
+      );
+
+    const rule =
+      String(
+        currentElection.resultRule || ""
+      ).trim();
+
+    if (!rule) {
+      box.classList.add("hidden");
+      return;
+    }
+
+    setText_("resultRuleText", rule);
+
+    const ruleLabel =
+      box.querySelector(".ruleLabel");
+
+    if (ruleLabel) {
+      ruleLabel.textContent =
+        currentElection.voteType ===
+        "confidence"
+          ? "信任条件"
+          : "選出方法";
+    }
+
+    box.classList.remove("hidden");
+  }
+
+
+  function renderStatusBadge_() {
+    const badge =
+      document.getElementById(
+        "statusBadge"
+      );
+
+    badge.classList.remove("closed");
+    badge.textContent = IS_ELECTION_PREVIEW ? "管理者プレビュー" : "投票受付中";
+  }
+
+
+  function renderOptionalText_(
+    elementId,
+    value
+  ) {
+    const element =
+      document.getElementById(elementId);
+
+    const text =
+      String(value || "").trim();
+
+    if (!text) {
+      element.textContent = "";
+      element.classList.add("hidden");
+      return;
+    }
+
+    element.textContent = text;
+    element.classList.remove("hidden");
+  }
+
+  function renderCandidatePhoto_(elementId, value) {
+    const image = document.getElementById(elementId);
+    const url = String(value || "").trim();
+    if (!url) {
+      image.removeAttribute("src");
+      image.classList.add("hidden");
+      return;
+    }
+    image.src = url;
+    image.classList.remove("hidden");
+  }
+
+  function renderCandidateMeta_(elementId, candidate) {
+    const values = [candidate.dojo, candidate.rank, candidate.nominationType]
+      .map(function(value) { return String(value || "").trim(); })
+      .filter(Boolean);
+    renderOptionalText_(elementId, values.join(" ／ "));
+  }
+
+  function renderLabeledText_(elementId, label, value) {
+    const element = document.getElementById(elementId);
+    const text = String(value || "").trim();
+    if (!text) {
+      element.textContent = "";
+      element.classList.add("hidden");
+      return;
+    }
+    element.textContent = "【" + label + "】\n" + text;
+    element.classList.remove("hidden");
+  }
+
+
+  function renderOptions_() {
+    const list =
+      document.getElementById(
+        "optionList"
+      );
+
+    list.innerHTML = "";
+
+    currentOptions.forEach(
+      function(option) {
+        const label =
+          document.createElement("label");
+
+        label.className = "optionCard";
+
+
+        const radio =
+          document.createElement("input");
+
+        radio.type = "radio";
+        radio.name = "electionOption";
+        radio.value = option.optionId;
+        radio.className = "optionRadio";
+
+        radio.addEventListener(
+          "change",
+          function() {
+            selectOption_(
+              option.optionId
+            );
+          }
+        );
+
+
+        const body =
+          document.createElement("div");
+
+        body.className = "optionBody";
+
+        const photoUrl = String(option.photoUrl || "").trim();
+        if (photoUrl) {
+          const photo = document.createElement("img");
+          photo.className = "candidatePhoto";
+          photo.src = photoUrl;
+          photo.alt = "候補者写真";
+          body.classList.add("hasCandidatePhoto");
+          body.appendChild(photo);
+        }
+
+
+        const optionLabel =
+          document.createElement("div");
+
+        optionLabel.className =
+          "optionLabel";
+
+        optionLabel.textContent =
+          option.label || "";
+
+        body.appendChild(optionLabel);
+
+
+        const candidateName =
+          String(
+            option.candidateName || ""
+          ).trim();
+
+        if (
+          candidateName &&
+          candidateName !==
+            String(
+              option.label || ""
+            ).trim()
+        ) {
+          const name =
+            document.createElement("div");
+
+          name.className =
+            "candidateName";
+
+          name.textContent =
+            candidateName;
+
+          body.appendChild(name);
+        }
+
+        const metaValues = [option.dojo, option.rank, option.nominationType]
+          .map(function(value) { return String(value || "").trim(); })
+          .filter(Boolean);
+
+        if (metaValues.length) {
+          const meta = document.createElement("div");
+          meta.className = "candidateMeta";
+          meta.textContent = metaValues.join(" ／ ");
+          body.appendChild(meta);
+        }
+
+
+        label.appendChild(radio);
+        label.appendChild(body);
+
+        list.appendChild(label);
+      }
+    );
+  }
+
+  function renderWithdrawnCandidates_(elementId) {
+    const box = document.getElementById(elementId);
+    if (!box) return;
+    box.innerHTML = "";
+    if (!currentWithdrawnCandidates.length) {
+      box.classList.add("hidden");
+      return;
+    }
+    const heading = document.createElement("h2");
+    heading.textContent = "候補者辞退のお知らせ";
+    box.appendChild(heading);
+    currentWithdrawnCandidates.forEach(function(candidate) {
+      const item = document.createElement("div");
+      item.className = "withdrawnCandidate";
+      const name = document.createElement("strong");
+      name.textContent = "【辞退】" + String(candidate.name || "");
+      const detail = document.createElement("p");
+      detail.textContent = [candidate.withdrawnAt, candidate.withdrawnReason].filter(Boolean).join("\n");
+      item.appendChild(name);
+      item.appendChild(detail);
+      box.appendChild(item);
+    });
+    box.classList.remove("hidden");
+  }
+
+
+  function selectOption_(optionId) {
+    selectedOptionId =
+      String(optionId || "").trim();
+
+    const confirmButton =
+      document.getElementById(
+        "confirmButton"
+      );
+
+    confirmButton.disabled =
+      !selectedOptionId;
+  }
+
+
+  // ===================================================
+  // 確認画面
+  // ===================================================
+
+  function openConfirmView() {
+    if (!selectedOptionId) {
+      alert(
+        "投票する項目を選択してください。"
+      );
+      return;
+    }
+
+    const option =
+      findCurrentOption_(
+        selectedOptionId
+      );
+
+    if (!option) {
+      showError_(
+        "選択した項目を確認できませんでした。"
+      );
+      return;
+    }
+
+    setText_(
+      "selectedOptionLabel",
+      option.label || ""
+    );
+
+    const candidateBox =
+      document.getElementById(
+        "selectedCandidateName"
+      );
+
+    const candidateName =
+      String(
+        option.candidateName || ""
+      ).trim();
+
+    if (
+      candidateName &&
+      candidateName !==
+        String(
+          option.label || ""
+        ).trim()
+    ) {
+      candidateBox.textContent =
+        "候補者：" +
+        candidateName;
+
+      candidateBox.classList.remove(
+        "hidden"
+      );
+
+    } else {
+      candidateBox.textContent = "";
+      candidateBox.classList.add(
+        "hidden"
+      );
+    }
+
+    showView_(
+      ELECTION_VIEW.CONFIRM
+    );
+
+    window.scrollTo(0, 0);
+  }
+
+
+  function backToVoteView() {
+    showView_(
+      ELECTION_VIEW.VOTE
+    );
+
+    window.scrollTo(0, 0);
+  }
+
+
+  function findCurrentOption_(
+    optionId
+  ) {
+    return currentOptions.find(
+      function(option) {
+        return (
+          option.optionId ===
+          optionId
+        );
+      }
+    ) || null;
+  }
+
+
+  // ===================================================
+  // 投票送信
+  // ===================================================
+
+  function submitVote() {
+    if (!selectedOptionId) {
+      showError_(
+        "投票内容を確認できませんでした。"
+      );
+      return;
+    }
+
+    setSubmittingState_(true);
+
+    showView_(
+      ELECTION_VIEW.SENDING
+    );
+
+    const params = {
+      electionId: currentElectionId,
+      optionId: selectedOptionId,
+      idToken: currentIdToken
+    };
+
+    if (IS_ELECTION_PREVIEW) {
+      callElectionApi_("completePreview", params).then(handlePreviewComplete_).catch(handleVoteFailure_);
+      return;
+    }
+
+    callElectionApi_("castVote", params)
+      .then(handleVoteResult_)
+      .catch(handleVoteFailure_);
+  }
+
+
+  function handleVoteResult_(response) {
+    setSubmittingState_(false);
+
+    if (!response || response.ok !== true) {
+      if (
+        response &&
+        response.alreadyVoted === true
+      ) {
+        showView_(
+          ELECTION_VIEW.ALREADY
+        );
+
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      if (
+        response &&
+        response.votingIneligible === true
+      ) {
+        setText_(
+          "ineligibleReason",
+          response.error ||
+            "現在の会員情報では投票できません。"
+        );
+        showView_(ELECTION_VIEW.INELIGIBLE);
+        return;
+      }
+
+      if (
+        response &&
+        response.state === "closed"
+      ) {
+        renderClosedView_();
+
+        showView_(
+          ELECTION_VIEW.CLOSED
+        );
+
+        return;
+      }
+
+      showError_(
+        response && response.error
+          ? response.error
+          : "投票を受け付けられませんでした。"
+      );
+
+      return;
+    }
+
+    showView_(
+      ELECTION_VIEW.COMPLETE
+    );
+
+    window.scrollTo(0, 0);
+  }
+
+
+  function handleVoteFailure_(error) {
+    setSubmittingState_(false);
+
+    console.error(error);
+
+    showError_(
+      "通信中にエラーが発生しました。"
+    );
+  }
+
+
+  function setSubmittingState_(
+    isSubmitting
+  ) {
+    const submitButton =
+      document.getElementById(
+        "submitButton"
+      );
+
+    const backButton =
+      document.getElementById(
+        "backButton"
+      );
+
+    if (submitButton) {
+      submitButton.disabled =
+        isSubmitting;
+    }
+
+    if (backButton) {
+      backButton.disabled =
+        isSubmitting;
+    }
+  }
+
+
+  // ===================================================
+  // 共通画面制御
+  // ===================================================
+
+  let publicationRefreshTimer = null;
+
+  function showView_(viewId) {
+    ShushinkaiFriendship.show(!IS_ELECTION_PREVIEW && (viewId === ELECTION_VIEW.COMPLETE || viewId === ELECTION_VIEW.ALREADY || (identityLinkedThisVisit && viewId === ELECTION_VIEW.VOTE)));
+    if (publicationRefreshTimer) clearTimeout(publicationRefreshTimer);
+    publicationRefreshTimer = null;
+    if (viewId === ELECTION_VIEW.BEFORE || viewId === ELECTION_VIEW.PAUSED) {
+      publicationRefreshTimer = setTimeout(loadElectionPageState, 60000);
+    }
+    const views =
+      document.querySelectorAll(
+        ".view"
+      );
+
+    views.forEach(function(view) {
+      view.classList.add("hidden");
+    });
+
+    const target =
+      document.getElementById(
+        viewId
+      );
+
+    if (target) {
+      target.classList.remove(
+        "hidden"
+      );
+    }
+  }
+
+
+  function showError_(message) {
+    setText_(
+      "errorMessage",
+      message ||
+        "エラーが発生しました。"
+    );
+
+    showView_(
+      ELECTION_VIEW.ERROR
+    );
+
+    window.scrollTo(0, 0);
+  }
+
+
+  function handleServerFailure_(error) {
+    if (pageStateRequestTimer) {
+      clearTimeout(pageStateRequestTimer);
+      pageStateRequestTimer = null;
+    }
+
+    console.error(error);
+
+    const detail = String(
+      error && error.message
+        ? error.message
+        : error || ""
+    ).trim();
+
+    showError_(
+      "選挙情報の読み込み中にエラーが発生しました。" +
+      (detail ? "\n（" + detail + "）" : "")
+    );
+  }
+
+  async function callElectionApi_(action, params) {
+    const body = new URLSearchParams({
+      action: action,
+      name:String(params.name || ""), clubTerm:String(params.clubTerm || ""), birthDate:String(params.birthDate || ""),
+      electionId: String(params.electionId || ""),
+      optionId: String(params.optionId || ""),
+      preview: IS_ELECTION_PREVIEW ? "1" : "",
+      idToken: String(params.idToken || "")
+    });
+
+    const response = await fetch(
+      ELECTION_CLIENT_CONFIG.GAS_API_URL,
+      {
+        method: "POST",
+        body: body,
+        redirect: "follow"
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("GAS通信エラー: HTTP " + response.status);
+    }
+
+    const responseText = await response.text();
+
+    try {
+      return JSON.parse(responseText);
+    } catch (error) {
+      throw new Error(
+        "GASの応答を読み取れませんでした" +
+        (responseText
+          ? ": " + responseText.slice(0, 120)
+          : "（応答が空です）")
+      );
+    }
+  }
+
+
+  function setText_(
+    elementId,
+    text
+  ) {
+    const element =
+      document.getElementById(
+        elementId
+      );
+
+    if (element) {
+      element.textContent =
+        String(
+          text == null ? "" : text
+        );
+    }
+  }
+
+  let identityLinkedThisVisit = false;
+  let identityLinkBusy = false;
+  function submitIdentityLink_(event) {
+    event.preventDefault();
+    if (identityLinkBusy || IS_ELECTION_PREVIEW) return;
+    const params = {idToken:currentIdToken, name:document.getElementById("identityName").value,
+      clubTerm:document.getElementById("identityTerm").value, birthDate:document.getElementById("identityBirth").value};
+    identityLinkBusy = true;
+    document.getElementById("identitySubmit").disabled = true;
+    setText_("identityError", "確認しています…");
+    const done = response => {
+      identityLinkBusy = false;
+      document.getElementById("identitySubmit").disabled = false;
+      if (response && response.ok === true && response.linked === true) {
+        document.getElementById("identityForm").reset();
+        setText_("identityError", "");
+        identityLinkedThisVisit = true;
+        loadElectionPageState();
+      } else if (response && response.authenticationError) {
+        shouldOpenLiffOnRetry = true;
+        document.getElementById("identityForm").reset();
+        showAuthenticationError_("LINE認証の有効時間が切れました。LINEで開き直してください。");
+      } else setText_("identityError", response && response.error || "確認できませんでした。時間をおいてお試しください。");
+    };
+    callElectionApi_("linkIdentity", params).then(done).catch(() => done(null));
+  }
