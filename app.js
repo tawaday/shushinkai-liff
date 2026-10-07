@@ -108,6 +108,7 @@
   // ===================================================
 
   function loadElectionPageState() {
+    if (isElectionTokenExpired_()) { beginElectionLogin_(true); return; }
     showView_(ELECTION_VIEW.LOADING);
 
     if (pageStateRequestTimer) {
@@ -146,6 +147,11 @@
       return;
     }
 
+    if (response && response.authenticationError === true &&
+        (isElectionTokenExpired_() || /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(response.error || "")))) {
+      beginElectionLogin_(true);
+      return;
+    }
     if (response && response.notLinked === true && currentIdToken && !IS_ELECTION_PREVIEW) {
       showView_(ELECTION_VIEW.LINK);
       return;
@@ -276,7 +282,7 @@
 
       await liff.init({
         liffId: ELECTION_CLIENT_CONFIG.LIFF_ID,
-        withLoginOnExternalBrowser: true
+        withLoginOnExternalBrowser: false
       });
 
       currentElectionId =
@@ -285,7 +291,7 @@
         ELECTION_CLIENT_CONFIG.DEFAULT_ELECTION_ID;
 
       if (!liff.isLoggedIn()) {
-        liff.login();
+        beginElectionLogin_(false);
         return;
       }
 
@@ -301,6 +307,7 @@
         return;
       }
 
+      ShushinkaiFriendship.check();
       loadElectionPageState();
 
     } catch (error) {
@@ -314,9 +321,35 @@
     }
   }
 
+  function isElectionTokenExpired_() {
+    const decoded = typeof liff.getDecodedIDToken === "function" ? liff.getDecodedIDToken() : null;
+    const expiresAt = Number(decoded && decoded.exp || 0) * 1000;
+    return !!expiresAt && expiresAt <= Date.now() + 30000;
+  }
+
+  // Refresh only expired authentication. Never replay castVote or identity writes.
+  function beginElectionLogin_(refresh) {
+    if (refresh) {
+      const key = "shushinkai_liff_auth_retry";
+      const previous = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - previous < 15000) {
+        showAuthenticationError_("LINE認証を更新できませんでした。画面を閉じて、LINEの投票リンクから開き直してください。");
+        return;
+      }
+      sessionStorage.setItem(key, String(Date.now()));
+      try { liff.logout(); } catch (_) {}
+    }
+    sessionStorage.setItem("shushinkai_liff_launch_params", JSON.stringify({view:"vote", election:currentElectionId, preview:IS_ELECTION_PREVIEW ? "1" : ""}));
+    const loginReturn = new URL("./", window.location.href);
+    loginReturn.searchParams.set("view", "vote");
+    loginReturn.searchParams.set("election", currentElectionId);
+    if (IS_ELECTION_PREVIEW) loginReturn.searchParams.set("preview", "1");
+    liff.login({redirectUri:loginReturn.href});
+  }
+
   function buildLiffElectionUrl_() {
     return ELECTION_CLIENT_CONFIG.LIFF_URL +
-      "?election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&view=vote&preview=1" : "");
+      "?view=vote&election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&preview=1" : "");
   }
 
   function showAuthenticationError_(message) {
@@ -1042,6 +1075,7 @@
   let publicationRefreshTimer = null;
 
   function showView_(viewId) {
+    ShushinkaiFriendship.show(!IS_ELECTION_PREVIEW && (viewId === ELECTION_VIEW.COMPLETE || viewId === ELECTION_VIEW.ALREADY || (identityLinkedThisVisit && viewId === ELECTION_VIEW.VOTE)));
     if (publicationRefreshTimer) clearTimeout(publicationRefreshTimer);
     publicationRefreshTimer = null;
     if (viewId === ELECTION_VIEW.BEFORE || viewId === ELECTION_VIEW.PAUSED) {
@@ -1159,6 +1193,7 @@
     }
   }
 
+  let identityLinkedThisVisit = false;
   let identityLinkBusy = false;
   function submitIdentityLink_(event) {
     event.preventDefault();
@@ -1174,6 +1209,7 @@
       if (response && response.ok === true && response.linked === true) {
         document.getElementById("identityForm").reset();
         setText_("identityError", "");
+        identityLinkedThisVisit = true;
         loadElectionPageState();
       } else if (response && response.authenticationError) {
         shouldOpenLiffOnRetry = true;

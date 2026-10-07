@@ -10,6 +10,7 @@ const screenIds = ["loading", "message", "registered", "register", "confirm", "i
 let visibleScreen = "loading";
 const show = id => {
   visibleScreen = id;
+  ShushinkaiFriendship.show(["registered", "inquiryComplete", "news"].includes(id));
   screenIds.forEach(x => $(x).classList.toggle("hidden", x !== id));
   const managing = ["inquiryAdmin","inquiryList","faqManage"].includes(id);
   for (const [tab, selected] of [["memberTab",!managing],["manageTab",managing]]) {
@@ -62,10 +63,6 @@ document.addEventListener("DOMContentLoaded", start);
 
 async function start() {
   try {
-    if (launchParams.view === "vote") {
-      location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
-      return;
-    }
     if (launchParams.view === "news" && launchParams.id && launchParams.newsToken) {
       const result = await api({
         action:"resolve", view:"news", id:launchParams.id, newsToken:launchParams.newsToken
@@ -75,6 +72,7 @@ async function start() {
         return;
       }
     }
+    if (launchParams.view === "vote") saveLaunchParamsForLogin_();
     await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:false });
     if (!liff.isLoggedIn()) {
       saveLaunchParamsForLogin_();
@@ -87,6 +85,11 @@ async function start() {
     }
     idToken = liff.getIDToken() || "";
     if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
+    if (launchParams.view === "vote") {
+      location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
+      return;
+    }
+    ShushinkaiFriendship.check();
     const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
       restartLineLogin_();
@@ -220,7 +223,8 @@ async function completeRegistration_(result) {
         !destination.redirectUrl || ["register", "alreadyRegistered"].includes(destination.view)) {
       throw Error(destination.error || "連携後の行き先を確認できませんでした。");
     }
-    handleResolve(destination);
+    renderRegistered(result);
+    ShushinkaiFriendship.offerContinuation(() => handleResolve(destination));
   } catch (error) {
     message("LINE連携は完了しました", "元の画面を開けませんでした。LINEのメニューからもう一度開いてください。\n" + error.message);
   }
