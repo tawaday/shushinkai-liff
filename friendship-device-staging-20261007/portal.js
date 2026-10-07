@@ -29,7 +29,7 @@ const launchParams = (() => {
   // LINE外の初回ログインでは、OAuthから戻る際にLIFFのviewが落ちる場合がある。
   // code/state付きの正規コールバック時だけ、ログイン直前に保存した遷移先を復元する。
   if (params.has("code") && params.has("state")) {
-    try { saved = JSON.parse(sessionStorage.getItem("shushinkai_liff_launch_params") || "{}"); } catch (_) {}
+    try { saved = JSON.parse(sessionStorage.getItem("shushinkai_friendship_device_launch_params") || "{}"); } catch (_) {}
   }
   return {
     view: params.get("view") || nested.get("view") || saved.view || "home",
@@ -63,10 +63,6 @@ document.addEventListener("DOMContentLoaded", start);
 
 async function start() {
   try {
-    if (launchParams.view === "vote") {
-      location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
-      return;
-    }
     if (launchParams.view === "news" && launchParams.id && launchParams.newsToken) {
       const result = await api({
         action:"resolve", view:"news", id:launchParams.id, newsToken:launchParams.newsToken
@@ -76,6 +72,7 @@ async function start() {
         return;
       }
     }
+    if (launchParams.view === "vote") saveLaunchParamsForLogin_();
     await liff.init({ liffId:PORTAL.LIFF_ID, withLoginOnExternalBrowser:false });
     if (!liff.isLoggedIn()) {
       saveLaunchParamsForLogin_();
@@ -88,13 +85,17 @@ async function start() {
     }
     idToken = liff.getIDToken() || "";
     if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
+    if (launchParams.view === "vote") {
+      location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
+      return;
+    }
     ShushinkaiFriendship.check();
     const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
       restartLineLogin_();
       return;
     }
-    sessionStorage.removeItem("shushinkai_liff_launch_params");
+    sessionStorage.removeItem("shushinkai_friendship_device_launch_params");
     handleResolve(result);
   } catch (error) {
     message("画面を開けません", error.message);
@@ -123,7 +124,7 @@ function restartLineLogin_() {
 }
 
 function saveLaunchParamsForLogin_() {
-  sessionStorage.setItem("shushinkai_liff_launch_params", JSON.stringify({
+  sessionStorage.setItem("shushinkai_friendship_device_launch_params", JSON.stringify({
     view:launchParams.view,
     preview:launchParams.preview,
     election:launchParams.election,

@@ -276,7 +276,7 @@
 
       await liff.init({
         liffId: ELECTION_CLIENT_CONFIG.LIFF_ID,
-        withLoginOnExternalBrowser: true
+        withLoginOnExternalBrowser: false
       });
 
       currentElectionId =
@@ -285,7 +285,12 @@
         ELECTION_CLIENT_CONFIG.DEFAULT_ELECTION_ID;
 
       if (!liff.isLoggedIn()) {
-        liff.login();
+        sessionStorage.setItem("shushinkai_friendship_device_launch_params", JSON.stringify({view:"vote", election:currentElectionId, preview:IS_ELECTION_PREVIEW ? "1" : ""}));
+        const loginReturn = new URL("./", window.location.href);
+        loginReturn.searchParams.set("view", "vote");
+        loginReturn.searchParams.set("election", currentElectionId);
+        if (IS_ELECTION_PREVIEW) loginReturn.searchParams.set("preview", "1");
+        liff.login({redirectUri:loginReturn.href});
         return;
       }
 
@@ -317,7 +322,7 @@
 
   function buildLiffElectionUrl_() {
     return ELECTION_CLIENT_CONFIG.LIFF_URL +
-      "?election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&view=vote&preview=1" : "");
+      "?view=vote&election=" + encodeURIComponent(currentElectionId) + (IS_ELECTION_PREVIEW ? "&preview=1" : "");
   }
 
   function showAuthenticationError_(message) {
