@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <title>宗心会 電子投票</title>
+
+  <script charset="utf-8"
+    src="https://static.line-scdn.net/liff/edge/2/sdk.js">
+  </script>
+
+  <link rel="stylesheet" href="./election.css?v=20260927-date-width1">
+<script src="friendship.js?v=20261007"></script><script src="device-stage.js"></script></head>
+
+<body><p style="padding:8px 16px"><a href="cases.html">実機検証手順・テスト連携解除</a></p>
+  <aside id="previewBanner" class="hidden" style="position:sticky;top:0;z-index:50;background:#fff0c2;color:#493500;padding:12px 16px;border-bottom:2px solid #b57d00;font-weight:700;font-size:14px;line-height:1.6">
+    管理者プレビュー：この操作では投票されません<br>
+    <a href="https://tawaday.github.io/shushinkai-liff/friendship-device-staging-20261007/index.html" target="_top" style="color:#493500;text-decoration:underline">プレビューを終了してメニューへ</a>
+  </aside>
+
+  <main class="appShell">
+
+    <!-- =========================================
+         ヘッダー
+    ========================================== -->
+    <header class="appHeader">
+      <div class="headerMark">宗心会</div>
+
+      <div class="headerText">
+        <div class="headerTitle">電子投票</div>
+        <div class="headerSub">SHUSHINKAI ELECTRONIC VOTING</div>
+      </div>
+    </header>
+
+
+    <!-- =========================================
+         読み込み中
+    ========================================== -->
+    <section id="loadingView" class="view">
+      <div class="card loadingCard">
+
+        <div class="spinner" aria-hidden="true"></div>
+
+        <div class="loadingText">
+          選挙情報を読み込んでいます
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =========================================
+         投票開始前
+    ========================================== -->
+    <section id="linkIdentityView" class="view hidden">
+      <div class="card electionCard identityCard">
+        <h1>本人確認・LINE連携</h1>
+        <p>このLINEアカウントは未連携です。名簿の登録内容を確認し、投票画面へ進みます。</p>
+        <form id="identityForm" onsubmit="submitIdentityLink_(event)">
+          <label for="identityName">氏名</label>
+          <input id="identityName" autocomplete="name" maxlength="100" required placeholder="例：山田 太郎">
+          <label for="identityTerm">部内期数</label>
+          <input id="identityTerm" inputmode="numeric" maxlength="10" required placeholder="例：25">
+          <label for="identityBirth">生年月日</label>
+          <span class="identityDateInputFrame">
+            <input id="identityBirth" type="date" required>
+          </span>
+          <p>確認できた会員情報に、このLINEアカウントを連携します。</p>
+          <button id="identitySubmit" type="submit" class="button primaryButton">本人確認してLINEを連携する</button>
+          <p id="identityError" role="alert" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+    <section id="beforeView" class="view hidden">
+      <div class="card electionCard announcementCard">
+        <div class="statusBadge">公示中</div>
+        <h1 id="announcementTitle" class="electionTitle"></h1>
+        <p id="announcementDescription" class="electionDescription"></p>
+        <dl class="announcementFacts">
+          <dt>投票方式</dt><dd id="announcementVoteType"></dd>
+          <dt>投票期間（日本時間）</dt><dd id="beforePeriodText"></dd>
+          <dt>決定条件</dt><dd id="announcementRule"></dd>
+          <dt>結果公開設定</dt><dd id="announcementResults"></dd>
+        </dl>
+        <p id="beforeMessage" class="announcementStart" role="status"></p>
+      </div>
+      <h2 class="announcementHeading">候補者情報</h2>
+      <div id="announcementCandidates"></div>
+      <div id="beforeWithdrawnCandidates" class="withdrawnCandidates hidden"></div>
+      <button type="button" class="button secondaryButton" onclick="loadElectionPageState()">最新の公開状態を確認する</button>
+    </section>
+    <section id="pausedView" class="view hidden">
+      <div class="card completeCard">
+        <h1 class="resultTitle">公開を一時停止しています</h1>
+        <p class="resultMessage">現在、この選挙の公開を一時停止しています。再公開までお待ちください。</p>
+        <button type="button" class="button secondaryButton" onclick="loadElectionPageState()">公開状態を確認する</button>
+      </div>
+    </section>
+
+
+    <!-- =========================================
+         投票終了
+    ========================================== -->
+    <section id="closedView" class="view hidden">
+
+      <div class="card completeCard">
+
+        <div class="resultIcon closedIcon">✓</div>
+
+        <h1 class="resultTitle">
+          投票は終了しました
+        </h1>
+
+        <p id="closedMessage" class="resultMessage">
+          ご協力ありがとうございました。
+        </p>
+
+        <div
+          id="closedPeriodBox"
+          class="privacyMessage hidden"
+        >
+          <div class="statePeriodLabel">投票期間</div>
+          <div id="closedPeriodText"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- =========================================
+         選挙未開催
+    ========================================== -->
+    <section id="noElectionView" class="view hidden">
+      <div class="card completeCard">
+        <div class="resultIcon waitingIcon">—</div>
+        <h1 class="resultTitle">現在、投票／選挙は行われていません</h1>
+        <p class="resultMessage">
+          投票または選挙が公開されましたら、宗心会公式LINEでお知らせします。
+        </p>
+      </div>
+    </section>
+
+    <!-- =========================================
+         投票権なし
+    ========================================== -->
+    <section id="ineligibleView" class="view hidden">
+      <div class="card errorCard">
+        <div class="resultIcon waitingIcon">—</div>
+        <h1 class="resultTitle">この選挙には投票できません</h1>
+        <p id="ineligibleReason" class="resultMessage">
+          現在の会員情報では投票できません。
+        </p>
+        <div class="privacyMessage">
+          投票権について不明な点は事務局へお問い合わせください。
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================
+         エラー
+    ========================================== -->
+    <section id="errorView" class="view hidden">
+      <div class="card errorCard">
+
+        <div class="resultIcon errorIcon">!</div>
+
+        <h1 class="resultTitle">
+          投票画面を表示できません
+        </h1>
+
+        <p id="errorMessage" class="resultMessage">
+          エラーが発生しました。
+        </p>
+
+        <button
+          id="errorRetryButton"
+          type="button"
+          class="button secondaryButton"
+          onclick="reloadElection()"
+        >
+          再読み込み
+        </button>
+
+      </div>
+    </section>
+
+
+    <!-- =========================================
+         投票画面
+    ========================================== -->
+    <section id="voteView" class="view hidden">
+
+      <div class="card electionCard">
+
+        <div id="statusBadge" class="statusBadge">
+          投票受付中
+        </div>
+
+        <h1 id="electionTitle" class="electionTitle">
+          宗心会 次期会長選挙
+        </h1>
+
+        <p id="electionDescription" class="electionDescription">
+        </p>
+
+        <div
+          id="electionPeriod"
+          class="periodBox hidden"
+        >
+          <div class="periodLabel">投票期間</div>
+          <div id="periodText" class="periodText"></div>
+        </div>
+
+        <div
+          id="resultRuleBox"
+          class="ruleBox hidden"
+        >
+          <div class="ruleLabel">選出・信任条件</div>
+          <div id="resultRuleText" class="ruleText"></div>
+        </div>
+
+      </div>
+
+      <section aria-labelledby="voteCandidatesTitle">
+        <h2 id="voteCandidatesTitle" class="noticeTitle">候補者一覧</h2>
+        <p class="voteCandidateHelp">候補者の詳細を確認してから、投票内容を選択してください。</p>
+        <div id="voteCandidates"></div>
+      </section>
+      <h2 class="noticeTitle">投票内容を選択</h2>
+
+      <!-- 候補者・選択肢 -->
+      <div id="optionList" class="optionList"></div>
+      <div id="voteWithdrawnCandidates" class="withdrawnCandidates hidden"></div>
+
+
+      <!-- 注意事項 -->
+      <div class="card noticeCard">
+
+        <h2 class="noticeTitle">投票にあたって</h2>
+
+        <ul class="noticeList">
+          <li>投票できるのは1人1回です。</li>
+          <li>送信後は投票内容を変更できません。</li>
+          <li>投票内容は無記名で保存されます。</li>
+        </ul>
+
+      </div>
+
+
+      <div class="bottomAction">
+
+        <button
+          id="confirmButton"
+          type="button"
+          class="button primaryButton"
+          onclick="openConfirmView()"
+          disabled
+        >
+          投票内容を確認する
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         確認画面
+    ========================================== -->
+    <section id="confirmView" class="view hidden">
+
+      <div class="card confirmCard">
+
+        <div class="sectionEyebrow">
+          投票内容の確認
+        </div>
+
+        <h1 class="confirmTitle">
+          この内容で投票します
+        </h1>
+
+        <div class="selectedBox">
+
+          <div class="selectedLabel">
+            選択した内容
+          </div>
+
+          <div id="selectedOptionLabel" class="selectedValue">
+          </div>
+
+          <div
+            id="selectedCandidateName"
+            class="selectedCandidate hidden"
+          >
+          </div>
+
+        </div>
+
+        <div class="finalWarning">
+          「投票する」を押すと、投票内容の変更はできません。
+        </div>
+
+      </div>
+
+
+      <div class="confirmActions">
+
+        <button
+          id="backButton"
+          type="button"
+          class="button secondaryButton"
+          onclick="backToVoteView()"
+        >
+          戻る
+        </button>
+
+        <button
+          id="submitButton"
+          type="button"
+          class="button primaryButton"
+          onclick="submitVote()"
+        >
+          投票する
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         送信中
+    ========================================== -->
+    <section id="sendingView" class="view hidden">
+
+      <div class="card loadingCard">
+
+        <div class="spinner" aria-hidden="true"></div>
+
+        <div class="loadingText">
+          投票を受け付けています
+        </div>
+
+        <div class="loadingSub">
+          画面を閉じずにお待ちください
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         投票完了
+    ========================================== -->
+    <section id="completeView" class="view hidden">
+
+      <div class="card completeCard">
+
+        <div class="resultIcon completeIcon">✓</div>
+
+        <h1 class="resultTitle">
+          投票ありがとうございました
+        </h1>
+
+        <p class="resultMessage">
+          あなたの投票を受け付けました。
+        </p>
+
+        <div class="privacyMessage">
+          投票内容は、投票者情報とは分離して
+          無記名で保存されています。
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================================
+         投票済み
+    ========================================== -->
+    <section id="alreadyVotedView" class="view hidden">
+
+      <div class="card completeCard">
+
+        <div class="resultIcon votedIcon">✓</div>
+
+        <h1 class="resultTitle">
+          投票済みです
+        </h1>
+
+        <div class="alreadyElectionBox">
+          <div id="alreadyElectionTitle" class="alreadyElectionTitle"></div>
+        </div>
+
+        <p class="resultMessage">
+          この選挙への投票は、すでに受け付けています。
+        </p>
+
+        <div class="privacyMessage">
+          投票内容は表示されません。
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <footer class="appFooter">
+      日本歯科大学新潟生命歯学部<br>
+      少林寺拳法部OB会 宗心会
+    </footer>
+
+  </main>
+
+  <script src="./app.js?v=20260924-identity-link"></script>
+
+</body>
+</html>
