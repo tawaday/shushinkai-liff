@@ -4,8 +4,8 @@
 
   const ELECTION_CLIENT_CONFIG = {
     DEFAULT_ELECTION_ID: "friendship_staging_1",
-    LIFF_ID: "2010887632-7LNBKpPE",
-    LIFF_URL: "https://liff.line.me/2010887632-7LNBKpPE",
+    LIFF_ID: "2011909807-XMVcp2z3",
+    LIFF_URL: "https://liff.line.me/2011909807-XMVcp2z3",
     GAS_API_URL: "https://script.google.com/macros/s/AKfycbzNv5DsxMh9F2CKfsbuDFnk4vsp3lqdzGzyK1TRkh9yrbgpesfJZxpe_EMa1jrxfh4l/exec"
   };
 
