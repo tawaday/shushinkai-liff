@@ -153,7 +153,10 @@
       return;
     }
     if (response && response.notLinked === true && currentIdToken && !IS_ELECTION_PREVIEW) {
-      showView_(ELECTION_VIEW.LINK);
+      const gate = new URL("index.html", location.href);
+      gate.searchParams.set("view", "vote");
+      gate.searchParams.set("election", currentElectionId);
+      location.replace(gate.href);
       return;
     }
     if (!response || response.ok !== true) {

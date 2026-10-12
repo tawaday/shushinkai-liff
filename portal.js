@@ -85,10 +85,6 @@ async function start() {
     }
     idToken = liff.getIDToken() || "";
     if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
-    if (launchParams.view === "vote") {
-      location.replace("election.html?election=" + encodeURIComponent(launchParams.election) + (launchParams.preview === "1" ? "&preview=1" : ""));
-      return;
-    }
     ShushinkaiFriendship.check();
     const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
@@ -204,7 +200,7 @@ function renderRegistered(result) {
 }
 
 async function completeRegistration_(result) {
-  if (launchParams.view !== "card" && launchParams.view !== "profile") {
+  if (!["card", "profile", "vote"].includes(launchParams.view)) {
     renderRegistered(result);
     return;
   }
@@ -220,8 +216,12 @@ async function completeRegistration_(result) {
       return;
     }
     if (!destination.ok || destination.notLinked || destination.registered !== true ||
-        !destination.redirectUrl || ["register", "alreadyRegistered"].includes(destination.view)) {
+        !(destination.redirectUrl || (launchParams.view === "vote" && destination.view === "vote")) || ["register", "alreadyRegistered"].includes(destination.view)) {
       throw Error(destination.error || "連携後の行き先を確認できませんでした。");
+    }
+    if (launchParams.view === "vote") {
+      handleResolve(destination);
+      return;
     }
     renderRegistered(result);
     ShushinkaiFriendship.offerContinuation(() => handleResolve(destination));
