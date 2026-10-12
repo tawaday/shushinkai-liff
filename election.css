@@ -1009,3 +1009,13 @@
   min-height: 1.25em;
   text-align: left;
 }
+
+/* Published aggregate result below the existing closed screen. */
+#closedResultBox { padding: 24px; margin-top: 16px; }
+.closedResultElectionName { margin: 0 0 8px; font-size: 18px; font-weight: 600; line-height: 1.6; }
+.closedResultTitle { margin: 0 0 16px; font-size: 22px; }
+.closedResultRows { margin: 0; }
+.closedResultRow { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid #eee; }
+.closedResultRow dt { color: #555; }
+.closedResultRow dd { margin: 0; font-weight: 700; }
+.closedResultDecision { margin: 24px 0 0; font-weight: 700; color: #5b1628; line-height: 1.7; }

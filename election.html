@@ -15,7 +15,7 @@
     src="https://static.line-scdn.net/liff/edge/2/sdk.js">
   </script>
 
-  <link rel="stylesheet" href="./election.css?v=20260927-date-width1">
+  <link rel="stylesheet" href="./election.css?v=20261012-closed-result">
 <script src="friendship.js?v=20261007"></script></head>
 
 <body>
@@ -128,6 +128,13 @@
           <div id="closedPeriodText"></div>
         </div>
 
+      </div>
+
+      <div id="closedResultBox" class="card hidden" aria-labelledby="closedResultTitle">
+        <p id="closedResultElectionName" class="closedResultElectionName"></p>
+        <h2 id="closedResultTitle" class="closedResultTitle">開票結果</h2>
+        <dl id="closedResultRows" class="closedResultRows"></dl>
+        <p id="closedResultDecision" class="closedResultDecision"></p>
       </div>
 
     </section>
@@ -419,7 +426,7 @@
 
   </main>
 
-  <script src="./app.js?v=20261007-auth-refresh"></script>
+  <script src="./app.js?v=20261012-closed-result"></script>
 
 </body>
 </html>

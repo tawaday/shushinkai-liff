@@ -210,7 +210,7 @@
         break;
 
       case "closed":
-        renderClosedView_();
+        renderClosedView_(data.closedResult);
         showView_(ELECTION_VIEW.CLOSED);
         break;
 
@@ -488,7 +488,8 @@
   }
 
 
-  function renderClosedView_() {
+  function renderClosedView_(result) {
+    renderClosedResult_(result);
     setText_(
       "closedMessage",
       "投票へのご協力ありがとうございました。"
@@ -506,6 +507,36 @@
     );
   }
 
+
+  function renderClosedResult_(result) {
+    const box = document.getElementById("closedResultBox");
+    box.classList.add("hidden");
+    document.getElementById("closedResultRows").textContent = "";
+    setText_("closedResultDecision", "");
+    setText_("closedResultElectionName", "");
+    if (!result || !currentElection || currentElection.isResultPublic !== true ||
+        result.electionId !== currentElection.electionId || !Array.isArray(result.breakdown)) return;
+    setText_("closedResultElectionName", currentElection.title || "電子投票");
+    const rows = document.getElementById("closedResultRows");
+    const metrics = [];
+    if (result.eligibleVoterCount !== null) metrics.push(["投票資格者", result.eligibleVoterCount + "名"]);
+    metrics.push(["投票総数", result.totalBallots + "票"]);
+    result.breakdown.forEach(function(item) { metrics.push([item.label, item.votes + "票"]); });
+    if (result.voteRate !== null) metrics.push(["投票率", Number(result.voteRate).toFixed(1) + "%"]);
+    metrics.forEach(function(metric) {
+      const row = document.createElement("div");
+      row.className = "closedResultRow";
+      const label = document.createElement("dt");
+      label.textContent = metric[0];
+      const value = document.createElement("dd");
+      value.textContent = metric[1];
+      row.appendChild(label);
+      row.appendChild(value);
+      rows.appendChild(row);
+    });
+    setText_("closedResultDecision", result.decisionText || "");
+    box.classList.remove("hidden");
+  }
 
   function renderStatePeriod_(
     boxId,
