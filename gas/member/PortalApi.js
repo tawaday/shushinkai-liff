@@ -338,6 +338,16 @@ function pushContactMenu_(lineUserId, role, electionRole) {
   if (response.getResponseCode() >= 300) throw new Error("問い合わせメニューを送信できませんでした。");
 }
 
+// Allowlisted entry context; unknown/legacy callers retain the registration note.
+function portalRegistrationLinkNote_(entryView) {
+  switch (String(entryView || "").trim()) {
+    case "card": return "liff_card_link";
+    case "profile": return "liff_profile_link";
+    case "vote": return "election_identity_link";
+    default: return "liff_self_registration";
+  }
+}
+
 function portalRegistrationLookup_(params) {
   const line = verifyPortalIdToken_(params.idToken);
   if (!line.ok) return line;
@@ -362,7 +372,7 @@ function portalRegistrationLookup_(params) {
   if (matches.length !== 1) return { ok:false, error:"本人確認できませんでした。入力内容をご確認ください。" };
   if (findUserLinkById_(matches[0].id)) return { ok:false, error:"この会員IDは別のLINEアカウントと連携済みです。事務局へお問い合わせください。" };
   const key = Utilities.getUuid();
-  CacheService.getScriptCache().put("portal-register:" + key, JSON.stringify({ id:matches[0].id, lineUserId:line.lineUserId, name:matches[0].name }), PORTAL_CONFIG.REGISTRATION_TOKEN_TTL);
+  CacheService.getScriptCache().put("portal-register:" + key, JSON.stringify({ id:matches[0].id, lineUserId:line.lineUserId, name:matches[0].name, entryView:String(params.entryView || "") }), PORTAL_CONFIG.REGISTRATION_TOKEN_TTL);
   return { ok:true, confirmationToken:key, member:{ name:matches[0].name, clubTerm:matches[0].clubTerm } };
 }
 
@@ -377,7 +387,7 @@ function portalRegistrationConfirm_(params) {
   if (data.lineUserId !== line.lineUserId) return { ok:false, error:"LINE認証が一致しません。" };
   return withUserLinkLock_(function() {
     if (findUserLinkByUserId_(line.lineUserId) || findUserLinkById_(data.id)) return { ok:false, error:"すでに連携されています。" };
-    upsertUserLink_(data.id, line.lineUserId, "", "", data.name, "liff_self_registration");
+    upsertUserLink_(data.id, line.lineUserId, "", "", data.name, portalRegistrationLinkNote_(data.entryView));
     setRegistered_(line.lineUserId, data.id, data.name);
     cache.remove(key);
     return {

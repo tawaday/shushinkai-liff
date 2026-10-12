@@ -247,6 +247,7 @@ $("lookupButton").onclick = async () => {
     $("registerError").textContent = "";
     const result = await api({
       action:"registrationLookup",
+      entryView:launchParams.view,
       idToken,
       name:$("name").value,
       clubTerm:$("clubTerm").value,

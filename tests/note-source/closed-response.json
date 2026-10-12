@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "state": "closed",
+  "electionData": {
+    "election": {
+      "electionId": "election_dbd05c25bd704a558de19963a085fc7b",
+      "title": "2026年 宗心会 会長臨時選挙",
+      "voteType": "confidence",
+      "originalVoteType": "confidence",
+      "status": "published",
+      "startAt": "2026/09/28 00:00",
+      "endAt": "2026/10/11 23:59",
+      "resultRule": "有効投票の過半数を必要とする",
+      "isResultPublic": true
+    },
+    "options": [
+      {
+        "optionId": "approve",
+        "label": "信任する",
+        "statement": "",
+        "manifesto": "",
+        "photoUrl": "",
+        "dojo": "",
+        "rank": "",
+        "nominationType": "",
+        "recommendation": ""
+      },
+      {
+        "optionId": "reject",
+        "label": "信任しない",
+        "statement": "",
+        "manifesto": "",
+        "photoUrl": "",
+        "dojo": "",
+        "rank": "",
+        "nominationType": "",
+        "recommendation": ""
+      }
+    ],
+    "confidenceCandidate": {
+      "name": "鈴木 直子"
+    },
+    "closedResult": {
+      "electionId": "election_dbd05c25bd704a558de19963a085fc7b",
+      "eligibleVoterCount": 98,
+      "totalBallots": 65,
+      "voteRate": 66.3,
+      "breakdown": [
+        {
+          "label": "信任",
+          "votes": 64
+        },
+        {
+          "label": "不信任",
+          "votes": 1
+        }
+      ],
+      "decisionText": "鈴木直子氏は信任されました"
+    }
+  }
+}

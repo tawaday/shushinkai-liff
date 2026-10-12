@@ -1,0 +1,15 @@
+const vm=require('vm'),fs=require('fs'),assert=require('assert');
+module.exports=function(existingNote){
+ const cache=new Map();const writes=[];let link=existingNote?{id:'001',name:'検証会員',note:existingNote}:null;
+ const c={console,PORTAL_CONFIG:{REGISTRATION_TOKEN_TTL:300},SPREADSHEET_ID:'fixture',Utilities:{getUuid:()=> 'fixture-confirm'},CacheService:{getScriptCache:()=>({put:(k,v)=>cache.set(k,v),get:k=>cache.get(k),remove:k=>cache.delete(k)})},SpreadsheetApp:{openById:()=>({getSpreadsheetTimeZone:()=> 'Asia/Tokyo'})},verifyPortalIdToken_:()=>({ok:true,lineUserId:'fixture-user'}),findUserLinkByUserId_:()=>link,findUserLinkById_:()=>link,withUserLinkLock_:f=>f(),consumeElectionLinkAttempt_:()=>true,electionIdentityName_:x=>x,electionIdentityTerm_:x=>x,electionIdentityDate_:x=>x,canonId_:x=>x,upsertUserLink_:(id,uid,g,r,name,note)=>{link={id,name,note};writes.push(note)},setRegistered_:()=>{}};
+ const mocks={...c};vm.createContext(c);vm.runInContext(fs.readFileSync(require('path').join(__dirname,'../../gas/member/PortalApi.js'),'utf8'),c);Object.assign(c,mocks);
+ c.findPortalRegistrationMatches_=()=>[{id:'001',name:'検証会員',clubTerm:'74'}];c.formatPortalRegistrationDate_=()=> '2026-10-12';
+ return {lookup:p=>c.portalRegistrationLookup_(p),confirm:p=>c.portalRegistrationConfirm_(p),writes,seed:(key,data)=>cache.set("portal-register:"+key,JSON.stringify(data)),setLink:value=>{link=value},note:()=>link&&link.note,map:c.portalRegistrationLinkNote_};
+};
+if(require.main===module){
+ for(const view of ['register','vote','card','profile',undefined,'bogus','__proto__']){const b=module.exports();const r=b.lookup({entryView:view,name:'検証会員',clubTerm:'74',birthDate:'1970-01-01'});assert(r.ok);assert(b.confirm({confirmationToken:r.confirmationToken,entryView:'vote',note:'arbitrary'}).ok);assert.equal(b.note(),Object.assign(Object.create(null),{register:'liff_self_registration',vote:'election_identity_link',card:'liff_card_link',profile:'liff_profile_link'})[view]||'liff_self_registration');const before=b.note();assert.equal(b.confirm({confirmationToken:r.confirmationToken}).ok,false);assert.equal(b.note(),before);}
+ for(const note of ['registered','liff_self_registration','election_identity_link','liff_card_link','liff_profile_link'])for(const view of ['card','profile','register','vote']){const b=module.exports(note);assert(b.lookup({entryView:view}).alreadyRegistered);assert(!b.confirm({confirmationToken:'absent'}).ok);assert.equal(b.note(),note);assert.equal(b.writes.length,0);}
+ const legacy=module.exports();legacy.seed('old',{id:'001',lineUserId:'fixture-user',name:'検証会員'});assert(legacy.confirm({confirmationToken:'old'}).ok);assert.equal(legacy.note(),'liff_self_registration');
+ const race=module.exports();const pending=race.lookup({entryView:'vote',name:'検証会員',clubTerm:'74',birthDate:'1970-01-01'});race.setLink({id:'001',note:'registered'});assert(!race.confirm({confirmationToken:pending.confirmationToken}).ok);assert.equal(race.note(),'registered');assert.equal(race.writes.length,0);
+ console.log('PASS backend: 4 notes, unknown/legacy fallback, confirm tampering, replay, 20 existing-note cases');
+}
