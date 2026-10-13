@@ -57,7 +57,7 @@ const portalSubtitles = new Map([
   ["reminder", "リマインド管理"],
   ["election-admin", "選挙管理"],
   ["vote", "電子投票"],
-  ["event", "オンライン新年会"],
+  ["event", "イベント出欠・参加"],
   ["event-admin", "新年会の運営"]
 ]);
 $("portalSubtitle").textContent = portalSubtitles.get(launchParams.view) || "会員ポータル";
