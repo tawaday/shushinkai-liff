@@ -6,6 +6,19 @@
   <section id="loading" class="card"><div class="spinner"></div><p>LINEで本人確認しています</p></section>
   <section id="message" class="card hidden"><h1 id="messageTitle"></h1><p id="messageText"></p><a id="messageLink" class="button hidden"></a></section>
 
+
+  <section id="eventAdmin" class="card hidden"><h1>新年会の運営</h1>
+    <p id="eventAdminCounts" role="status"></p><button id="eventAdminRefresh" class="button secondaryButton">一覧を更新</button>
+    <div style="overflow-x:auto"><table><thead><tr><th>会員番号</th><th>氏名</th><th>出欠</th><th>受付</th><th>参加操作回数</th><th>LINE</th></tr></thead><tbody id="eventAdminRows"></tbody></table></div>
+    <div id="eventReminderPanel" class="hidden"><h2>案内・リマインド</h2>
+      <label>対象<select id="eventReminderFilter"><option value="all">全員</option><option value="unanswered">未回答</option><option value="attending">出席・未定</option><option value="checkedIn">受付済み</option></select></label>
+      <label>文面<select id="eventReminderKind"><option value="invite">開催案内</option><option value="remind">リマインド</option></select></label>
+      <label>案内文<textarea id="eventReminderMessage" rows="7" maxlength="4500" placeholder="空欄で対象を確認すると、案内文を表示します。"></textarea></label>
+      <label>配信予定日時（任意・端末の時間）<input id="eventReminderWhen" type="datetime-local"></label>
+      <button id="eventReminderPreview" class="button secondaryButton">対象と文面を確認</button><button id="eventReminderSave" class="button">検証用の下書きを保存</button>
+      <p id="eventReminderResult" role="status"></p><p class="hint">stagingではLINE送信・自動配信は行いません。未連携の方は下書きの宛先から除外します。実際の配信可否は友だち状態などの確認が必要です。</p>
+    </div><p id="eventAdminError" class="error" role="alert"></p>
+  </section>
   <section id="event" class="card hidden">
     <p class="statusEyebrow">オンライン新年会</p><h1 id="eventTitle"></h1>
     <p id="eventSchedule"></p><p>出入り自由で、新年のご挨拶と歓談を予定しています。</p>
@@ -126,4 +139,4 @@
       </div>
     </div>
   </div>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261013-event-zoom"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261013-event-admin"></script></body></html>

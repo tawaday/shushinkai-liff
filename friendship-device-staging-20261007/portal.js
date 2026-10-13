@@ -6,7 +6,7 @@ const PORTAL = {
 let idToken = "";
 let confirmationToken = "";
 const $ = id => document.getElementById(id);
-const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage", "event", "eventComplete"];
+const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage", "event", "eventComplete", "eventAdmin"];
 let visibleScreen = "loading";
 const show = id => {
   visibleScreen = id;
@@ -57,7 +57,8 @@ const portalSubtitles = new Map([
   ["reminder", "リマインド管理"],
   ["election-admin", "選挙管理"],
   ["vote", "電子投票"],
-  ["event", "オンライン新年会"]
+  ["event", "オンライン新年会"],
+  ["event-admin", "新年会の運営"]
 ]);
 $("portalSubtitle").textContent = portalSubtitles.get(launchParams.view) || "会員ポータル";
 
@@ -92,7 +93,7 @@ async function start() {
       return;
     }
     ShushinkaiFriendship.check();
-    const result = await api({ action:launchParams.view === "event" ? "eventResolve" : "resolve", view:launchParams.view, id:launchParams.id, eventId:launchParams.eventId, idToken });
+    const result = await api({ action:launchParams.view === "event" ? "eventResolve" : launchParams.view === "event-admin" ? "eventAdmin" : "resolve", view:launchParams.view, id:launchParams.id, eventId:launchParams.eventId, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
       restartLineLogin_();
       return;
@@ -152,6 +153,7 @@ function handleResolve(result) {
     renderRegistered(result);
     return;
   }
+  if (result.view === "eventAdmin") { renderEventAdmin_(result); return; }
   if (result.view === "event") { renderOnlineEvent_(result); return; }
   if (result.redirectUrl) {
     location.replace(result.redirectUrl);
@@ -218,7 +220,7 @@ async function completeRegistration_(result) {
       restartLineLogin_();
       return;
     }
-    const destination = await api({ action:launchParams.view === "event" ? "eventResolve" : "resolve", view:launchParams.view, id:launchParams.id, eventId:launchParams.eventId, idToken });
+    const destination = await api({ action:launchParams.view === "event" ? "eventResolve" : launchParams.view === "event-admin" ? "eventAdmin" : "resolve", view:launchParams.view, id:launchParams.id, eventId:launchParams.eventId, idToken });
     if (!destination.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(destination.error || ""))) {
       restartLineLogin_();
       return;
@@ -719,3 +721,35 @@ $("eventZoom").onclick=event=>{
     catch(_) { /* Keep the normal link available when the SDK cannot open it. */ }
   }
 };
+
+function renderEventAdmin_(result) {
+  const c=result.counts;
+  $("eventAdminCounts").textContent=`対象 ${c.total}名 ／ 出席 ${c.attending} ／ 欠席 ${c.absent} ／ 未定 ${c.undecided} ／ 未回答 ${c.unanswered} ／ 受付済 ${c.checkedIn}`;
+  const body=$("eventAdminRows");body.replaceChildren();
+  result.rows.forEach(r=>{const tr=document.createElement("tr");[r.id,r.name,r.attendance,r.checkedIn ? "受付済" : "未受付",r.joinCount,r.linked ? "連携済" : "未連携"].forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});body.appendChild(tr);});
+  $("eventReminderPanel").classList.toggle("hidden",!result.canPrepare);
+  $("eventAdminError").textContent="";show("eventAdmin");
+}
+$("eventAdminRefresh").onclick=async()=>{
+  const button=$("eventAdminRefresh");button.disabled=true;
+  try{const result=await api({action:"eventAdmin",eventId:launchParams.eventId,idToken});if(!result.ok)throw Error(result.error);renderEventAdmin_(result);}
+  catch(e){$("eventAdminError").textContent=e.message;}finally{button.disabled=false;}
+};
+function eventReminderParams_(action) {
+  const value=$("eventReminderWhen").value;
+  return {action,eventId:launchParams.eventId,idToken,filter:$("eventReminderFilter").value,kind:$("eventReminderKind").value,message:$("eventReminderMessage").value,scheduledAt:value?new Date(value).toISOString():""};
+}
+async function eventReminderRequest_(action) {
+  const preview=$("eventReminderPreview"),save=$("eventReminderSave");preview.disabled=true;save.disabled=true;
+  try {
+    const result=await api(eventReminderParams_(action));if(!result.ok)throw Error(result.error);
+    if(action==="eventPreview") {
+      $("eventReminderMessage").value=result.message;
+      $("eventReminderResult").textContent=`対象 ${result.candidateCount}名 ／ LINE連携済 ${result.linkedCount}名 ／ 未連携 ${result.unlinkedCount}名（下書きの宛先から除外）`;
+    } else $("eventReminderResult").textContent=result.message;
+    $("eventAdminError").textContent="";
+  }catch(e){$("eventAdminError").textContent=e.message;}finally{preview.disabled=false;save.disabled=false;}
+}
+$("eventReminderPreview").onclick=()=>eventReminderRequest_("eventPreview");
+$("eventReminderSave").onclick=()=>eventReminderRequest_("eventDraft");
+$("eventReminderKind").onchange=()=>{$("eventReminderMessage").value="";};
