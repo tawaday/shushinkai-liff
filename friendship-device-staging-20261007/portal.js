@@ -667,6 +667,7 @@ function renderOnlineEvent_(result) {
   $("eventJoinState").textContent=result.joinMessage || "";
   $("eventWalkin").textContent=result.eventType==="online" ? "飛び入り参加："+(result.walkinAllowed ? "可能" : "不可（出席回答者のみ）") : "";
   $("eventJoin").classList.toggle("hidden",result.eventType==="assembly");
+  $("eventZoomHint").classList.toggle("hidden",result.eventType==="assembly");
   renderGenericFields_(result);
   $("eventTitle").textContent=result.title;
   $("eventSchedule").textContent=result.schedule;
