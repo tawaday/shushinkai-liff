@@ -5,6 +5,22 @@
   <header><b>宗心会</b><span id="portalSubtitle">会員ポータル</span></header>
   <section id="loading" class="card"><div class="spinner"></div><p>LINEで本人確認しています</p></section>
   <section id="message" class="card hidden"><h1 id="messageTitle"></h1><p id="messageText"></p><a id="messageLink" class="button hidden"></a></section>
+
+  <section id="event" class="card hidden">
+    <p class="statusEyebrow">オンライン新年会</p><h1 id="eventTitle"></h1>
+    <p id="eventSchedule"></p><p>出入り自由で、新年のご挨拶と歓談を予定しています。</p>
+    <p id="eventMember"></p><p id="eventAttendance"></p>
+    <div class="adminActions"><button class="button" data-attendance="出席">出席</button><button class="button secondaryButton" data-attendance="未定">未定</button><button class="button secondaryButton" data-attendance="欠席">欠席</button></div>
+    <p id="eventNotice" role="status"></p><hr><p id="eventCheckin"></p>
+    <p>事前に回答していなくても、欠席と回答していても参加できます。</p>
+    <button id="eventJoin" class="button">参加受付をする</button>
+    <p class="hint">検証用：今回は受付完了まで確認します。Zoomは開きません。</p>
+    <p id="eventError" class="error" role="alert"></p>
+  </section>
+  <section id="eventComplete" class="card hidden">
+    <div class="statusIcon" aria-hidden="true">✓</div><h1>受付が完了しました</h1>
+    <p id="eventCompleteText" role="status"></p><button id="eventBack" class="button secondaryButton">新年会の画面に戻る</button>
+  </section>
   <section id="registered" class="card statusCard hidden">
     <div class="statusIcon" aria-hidden="true">✓</div>
     <p class="statusEyebrow">LINE連携</p>
@@ -110,4 +126,4 @@
       </div>
     </div>
   </div>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261007-device-route"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261013-event-stage"></script></body></html>

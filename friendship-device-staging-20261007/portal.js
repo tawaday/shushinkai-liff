@@ -6,7 +6,7 @@ const PORTAL = {
 let idToken = "";
 let confirmationToken = "";
 const $ = id => document.getElementById(id);
-const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage"];
+const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage", "event", "eventComplete"];
 let visibleScreen = "loading";
 const show = id => {
   visibleScreen = id;
@@ -32,6 +32,7 @@ const launchParams = (() => {
     try { saved = JSON.parse(sessionStorage.getItem("shushinkai_friendship_device_launch_params") || "{}"); } catch (_) {}
   }
   return {
+    eventId: params.get("event") || nested.get("event") || saved.eventId || "",
     view: params.get("view") || nested.get("view") || saved.view || "home",
     preview: (params.get("preview") || nested.get("preview") || saved.preview || "") === "1" ? "1" : "",
     election: params.get("election") || nested.get("election") || saved.election || "friendship_staging_1",
@@ -55,7 +56,8 @@ const portalSubtitles = new Map([
   ["reception", "QR受付"],
   ["reminder", "リマインド管理"],
   ["election-admin", "選挙管理"],
-  ["vote", "電子投票"]
+  ["vote", "電子投票"],
+  ["event", "オンライン新年会"]
 ]);
 $("portalSubtitle").textContent = portalSubtitles.get(launchParams.view) || "会員ポータル";
 
@@ -90,7 +92,7 @@ async function start() {
       return;
     }
     ShushinkaiFriendship.check();
-    const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
+    const result = await api({ action:launchParams.view === "event" ? "eventResolve" : "resolve", view:launchParams.view, id:launchParams.id, eventId:launchParams.eventId, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
       restartLineLogin_();
       return;
@@ -126,6 +128,7 @@ function restartLineLogin_() {
 function saveLaunchParamsForLogin_() {
   sessionStorage.setItem("shushinkai_friendship_device_launch_params", JSON.stringify({
     view:launchParams.view,
+    eventId:launchParams.eventId,
     preview:launchParams.preview,
     election:launchParams.election,
     id:launchParams.id,
@@ -149,6 +152,7 @@ function handleResolve(result) {
     renderRegistered(result);
     return;
   }
+  if (result.view === "event") { renderOnlineEvent_(result); return; }
   if (result.redirectUrl) {
     location.replace(result.redirectUrl);
     return;
@@ -214,7 +218,7 @@ async function completeRegistration_(result) {
       restartLineLogin_();
       return;
     }
-    const destination = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
+    const destination = await api({ action:launchParams.view === "event" ? "eventResolve" : "resolve", view:launchParams.view, id:launchParams.id, eventId:launchParams.eventId, idToken });
     if (!destination.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(destination.error || ""))) {
       restartLineLogin_();
       return;
@@ -247,6 +251,8 @@ $("lookupButton").onclick = async () => {
     $("registerError").textContent = "";
     const result = await api({
       action:"registrationLookup",
+      entryView:launchParams.view,
+      eventId:launchParams.eventId,
       idToken,
       name:$("name").value,
       clubTerm:$("clubTerm").value,
@@ -656,4 +662,51 @@ $("faqCategoryForm").onsubmit=async event=>{
   try {await inquiryRequest_("faqCategorySave",{input:{...editingFaqCategory,name:$("faqCategoryName").value,sortOrder:$("faqCategoryOrder").value}});await loadFaq_(true);$("faqCategoryNew").click();}
   catch(error) {$("faqCategoryError").textContent=error.message;}
   finally {button.disabled=false;}
+};
+
+// Online event staging: the ID token is sent only to the isolated API.
+let onlineEventBusy = false;
+function renderOnlineEvent_(result) {
+  $("eventTitle").textContent=result.title;
+  $("eventSchedule").textContent=result.schedule;
+  $("eventMember").textContent=(result.memberName || "会員")+" 様";
+  $("eventAttendance").textContent="現在の出欠："+result.attendance;
+  $("eventCheckin").textContent=result.checkedIn ? "受付済（参加操作 "+result.joinCount+"回）" : "当日受付：未受付";
+  $("eventJoin").disabled=!result.canJoin;
+  $("eventJoin").textContent=result.checkedIn ? "もう一度受付する" : "参加受付をする";
+  document.querySelectorAll("[data-attendance]").forEach(button=>{button.disabled=!result.canRespond;});
+  $("eventError").textContent="";show("event");
+}
+async function onlineEventResponse_(attendance) {
+  if(onlineEventBusy)return;onlineEventBusy=true;
+  document.querySelectorAll("[data-attendance]").forEach(button=>{button.disabled=true;});
+  $("eventJoin").disabled=true;
+  try {
+    const result=await api({action:"eventRespond",eventId:launchParams.eventId,attendance,idToken});
+    if(!result.ok)throw Error(result.error);renderOnlineEvent_(result);
+    $("eventNotice").textContent="出欠を「"+attendance+"」で保存しました。";
+  }catch(e){$("eventError").textContent=e.message;document.querySelectorAll("[data-attendance]").forEach(button=>{button.disabled=false;});$("eventJoin").disabled=false;}
+  finally{onlineEventBusy=false;}
+}
+async function onlineEventJoin_() {
+  if(onlineEventBusy)return;onlineEventBusy=true;$("eventJoin").disabled=true;
+  const key="nye_join_operation:"+launchParams.eventId;
+  try {
+    let operationId=sessionStorage.getItem(key);
+    if(!operationId){operationId=crypto.randomUUID();sessionStorage.setItem(key,operationId);}
+    const result=await api({action:"eventJoin",eventId:launchParams.eventId,operationId,idToken});
+    if(!result.ok)throw Error(result.error);
+    sessionStorage.removeItem(key);
+    $("eventCompleteText").textContent=result.message;
+    show("eventComplete");
+  }catch(e){$("eventError").textContent=e.message+" 再試行する場合は、もう一度受付ボタンを押してください。";$("eventJoin").disabled=false;}
+  finally{onlineEventBusy=false;}
+}
+document.querySelectorAll("[data-attendance]").forEach(button=>{button.onclick=()=>onlineEventResponse_(button.dataset.attendance);});
+$("eventJoin").onclick=onlineEventJoin_;
+$("eventBack").onclick=async()=>{
+  $("eventBack").disabled=true;
+  try {const result=await api({action:"eventResolve",eventId:launchParams.eventId,idToken});if(!result.ok)throw Error(result.error);handleResolve(result);}
+  catch(e){$("eventCompleteText").textContent=e.message;}
+  finally{$("eventBack").disabled=false;}
 };
