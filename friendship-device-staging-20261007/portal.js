@@ -746,7 +746,7 @@ async function eventReminderRequest_(action) {
     if(action==="eventPreview") {
       $("eventReminderMessage").value=result.message;
       $("eventReminderResult").textContent=`対象 ${result.candidateCount}名 ／ LINE連携済 ${result.linkedCount}名 ／ 未連携 ${result.unlinkedCount}名（下書きの宛先から除外）`;
-    } else $("eventReminderResult").textContent=result.message;
+    } else {$("eventReminderResult").textContent=result.message;if(result.savedMessage)$("eventReminderMessage").value=result.savedMessage;}
     $("eventAdminError").textContent="";
   }catch(e){$("eventAdminError").textContent=e.message;}finally{preview.disabled=false;save.disabled=false;}
 }
