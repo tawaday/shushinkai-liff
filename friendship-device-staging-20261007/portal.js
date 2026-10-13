@@ -766,8 +766,8 @@ function renderGenericEventList_(result) {
   $("eventListError").textContent="";show("eventList");
 }
 function eventRadioGroup_(key,label,options,selected,disabled) {
- const group=document.createElement("fieldset"),legend=document.createElement("legend"),choices=document.createElement("div");legend.textContent=label;group.appendChild(legend);choices.className="eventChoices";
- options.forEach(value=>{const row=document.createElement("label"),input=document.createElement("input");row.className="radioLabel";input.type="radio";input.name=key;input.value=value;input.checked=selected===value;input.disabled=disabled;row.appendChild(input);row.appendChild(document.createTextNode(value));choices.appendChild(row);});group.appendChild(choices);return group;
+ const group=document.createElement("fieldset"),legend=document.createElement("legend"),choices=document.createElement("div");legend.textContent=label;group.appendChild(legend);const attendance=options.length===3&&["出席","未定","欠席"].every(v=>options.includes(v));choices.className="eventChoices"+(attendance ? " attendanceChoices" : "");
+ (attendance ? ["出席","未定","欠席"] : options).forEach(value=>{const row=document.createElement("label"),input=document.createElement("input");row.className="radioLabel";input.type="radio";input.name=key;input.value=value;input.checked=selected===value;input.disabled=disabled;row.appendChild(input);row.appendChild(document.createTextNode(value));choices.appendChild(row);});group.appendChild(choices);return group;
 }
 function renderGenericFields_(result) {
  const area=$("eventDetails");area.replaceChildren();
