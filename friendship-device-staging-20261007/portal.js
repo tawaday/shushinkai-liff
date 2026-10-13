@@ -696,6 +696,8 @@ async function onlineEventJoin_() {
     if(!operationId){operationId=crypto.randomUUID();sessionStorage.setItem(key,operationId);}
     const result=await api({action:"eventJoin",eventId:launchParams.eventId,operationId,idToken});
     if(!result.ok)throw Error(result.error);
+    if(!/^https:\/\/([a-z0-9-]+\.)?zoom\.us\/j\/[0-9]+(?:\?|$)/i.test(String(result.zoomUrl || "")))throw Error("Zoomの参加先を確認できませんでした。");
+    $("eventZoom").href=result.zoomUrl;
     sessionStorage.removeItem(key);
     $("eventCompleteText").textContent=result.message;
     show("eventComplete");
@@ -709,4 +711,11 @@ $("eventBack").onclick=async()=>{
   try {const result=await api({action:"eventResolve",eventId:launchParams.eventId,idToken});if(!result.ok)throw Error(result.error);handleResolve(result);}
   catch(e){$("eventCompleteText").textContent=e.message;}
   finally{$("eventBack").disabled=false;}
+};
+
+$("eventZoom").onclick=event=>{
+  if(typeof liff.openWindow === "function" && liff.isInClient()) {
+    try {liff.openWindow({url:$("eventZoom").href,external:true});event.preventDefault();}
+    catch(_) { /* Keep the normal link available when the SDK cannot open it. */ }
+  }
 };
