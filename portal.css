@@ -67,3 +67,7 @@
 #adminFaqCandidate{margin-top:16px}
 #faqCategoriesPanel{margin-top:16px;padding:16px;background:#f7f2ec;border-radius:10px}
 #faqCategoryItems .button{text-align:left;overflow-wrap:anywhere}
+
+.eventChoices{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.eventChoices .radioLabel{flex:1 1 105px;min-height:44px;margin:0;padding:10px 12px;border:1px solid #cfc5bd;border-radius:8px;cursor:pointer}.eventChoices .radioLabel input{min-width:18px;min-height:18px}.eventChoices .radioLabel:has(input:checked){background:#f7eee9;border-color:#721515}.eventChoices .radioLabel:has(input:disabled){cursor:default;opacity:.7}#eventSubmit{margin-top:20px}
+
+.eventChoices.attendanceChoices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.eventChoices.attendanceChoices .radioLabel{min-width:0;box-sizing:border-box}.eventChoices.attendanceChoices .radioLabel:has(input[value="出席"]){grid-column:1 / -1;min-height:54px;font-weight:600}.eventChoices.attendanceChoices .radioLabel:has(input[value="出席"]:not(:checked)){border-color:#bba6a1}

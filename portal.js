@@ -6,7 +6,7 @@ const PORTAL = {
 let idToken = "";
 let confirmationToken = "";
 const $ = id => document.getElementById(id);
-const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage"];
+const screenIds = ["loading", "message", "registered", "register", "confirm", "inquiry", "inquiryComplete", "inquiryAdmin", "news", "inquiryHome", "inquiryFaq", "inquiryList", "faqManage", "event", "eventComplete", "eventList"];
 let visibleScreen = "loading";
 const show = id => {
   visibleScreen = id;
@@ -32,6 +32,7 @@ const launchParams = (() => {
     try { saved = JSON.parse(sessionStorage.getItem("shushinkai_liff_launch_params") || "{}"); } catch (_) {}
   }
   return {
+    eventId: params.get("event") || nested.get("event") || saved.eventId || "",
     view: params.get("view") || nested.get("view") || saved.view || "home",
     preview: (params.get("preview") || nested.get("preview") || saved.preview || "") === "1" ? "1" : "",
     election: params.get("election") || nested.get("election") || saved.election || "chairman_2026",
@@ -55,7 +56,8 @@ const portalSubtitles = new Map([
   ["reception", "QR受付"],
   ["reminder", "リマインド管理"],
   ["election-admin", "選挙管理"],
-  ["vote", "電子投票"]
+  ["vote", "電子投票"],
+  ["event", "イベント出欠・参加"]
 ]);
 $("portalSubtitle").textContent = portalSubtitles.get(launchParams.view) || "会員ポータル";
 
@@ -86,7 +88,7 @@ async function start() {
     idToken = liff.getIDToken() || "";
     if (!idToken) throw Error("LINE認証情報を取得できませんでした。");
     ShushinkaiFriendship.check();
-    const result = await api({ action:"resolve", view:launchParams.view, id:launchParams.id, idToken });
+    const result = await api({ action:launchParams.view === "event" ? (launchParams.eventId ? "eventResolve" : "eventList") : "resolve", view:launchParams.view, id:launchParams.id, eventId:launchParams.eventId, idToken });
     if (!result.ok && /(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(result.error || ""))) {
       restartLineLogin_();
       return;
@@ -122,6 +124,7 @@ function restartLineLogin_() {
 function saveLaunchParamsForLogin_() {
   sessionStorage.setItem("shushinkai_liff_launch_params", JSON.stringify({
     view:launchParams.view,
+    eventId:launchParams.eventId,
     preview:launchParams.preview,
     election:launchParams.election,
     id:launchParams.id,
@@ -145,6 +148,8 @@ function handleResolve(result) {
     renderRegistered(result);
     return;
   }
+  if (result.view === "eventList") {renderGenericEventList_(result);return;}
+  if (result.view === "event") { renderOnlineEvent_(result); return; }
   if (result.redirectUrl) {
     location.replace(result.redirectUrl);
     return;
@@ -200,6 +205,10 @@ function renderRegistered(result) {
 }
 
 async function completeRegistration_(result) {
+  if (launchParams.view === "event") {
+    const r=await api({action:launchParams.eventId?"eventResolve":"eventList",eventId:launchParams.eventId,idToken});
+    if(r.ok&&r.registered)handleResolve(r);else message("LINE連携は完了しました",r.error||"同じリンクを開き直してください。");return;
+  }
   if (!["card", "profile", "vote"].includes(launchParams.view)) {
     renderRegistered(result);
     return;
@@ -248,6 +257,7 @@ $("lookupButton").onclick = async () => {
     const result = await api({
       action:"registrationLookup",
       entryView:launchParams.view,
+      eventId:launchParams.eventId,
       idToken,
       name:$("name").value,
       clubTerm:$("clubTerm").value,
@@ -658,3 +668,104 @@ $("faqCategoryForm").onsubmit=async event=>{
   catch(error) {$("faqCategoryError").textContent=error.message;}
   finally {button.disabled=false;}
 };
+
+// Authenticated event responses and participant entry.
+let onlineEventBusy = false;
+let currentEventView = null;
+function renderOnlineEvent_(result) {
+  $("eventNotice").textContent="";
+  currentEventView=result;launchParams.eventId=result.eventId || launchParams.eventId;
+  $("eventSubject").textContent=result.subject || "";
+  $("eventDeadline").textContent="出欠回答期限："+(result.answerDeadline || "");
+  $("eventAnswerState").textContent=result.answerMessage || "";
+  $("eventJoinState").textContent=result.joinMessage || "";
+  $("eventWalkin").textContent=result.eventType==="online" ? "飛び入り参加："+(result.walkinAllowed ? "可能" : "不可（出席回答者のみ）") : "";
+  $("eventJoin").classList.toggle("hidden",result.eventType==="assembly");
+  $("eventZoomHint").classList.toggle("hidden",result.eventType==="assembly");
+  renderGenericFields_(result);
+  $("eventTitle").textContent=result.title;
+  $("eventSchedule").textContent=result.schedule;
+  $("eventMember").textContent=(result.memberName || "会員")+" 様";
+  $("eventAttendance").textContent=(result.eventType==="assembly" ? "参加予定（各項目から集計）：" : "現在の出欠：")+result.attendance;
+  $("eventCheckin").textContent=result.checkedIn ? "受付済（参加操作 "+result.joinCount+"回） 初回："+(result.firstJoinAt || "") : "当日受付：未受付";
+  $("eventJoin").disabled=!result.canJoin;
+  $("eventJoin").textContent=result.checkedIn ? "もう一度会議室へ進む" : "受付して会議室へ進む";
+  $("eventSubmit").disabled=!result.canRespond;
+  $("eventError").textContent="";show("event");
+}
+async function onlineEventResponse_() {
+  if(onlineEventBusy)return;onlineEventBusy=true;
+  $("eventSubmit").disabled=true;
+  $("eventJoin").disabled=true;
+  try {
+    const details=readGenericFields_();
+    const chosen=document.querySelector('input[name="eventAttendanceChoice"]:checked');
+    if(currentEventView.eventType!=="assembly"&&!chosen)throw Error("出欠を選択してください。");
+    const attendance=chosen ? chosen.value : "";
+    const result=await api({action:"eventRespond",eventId:launchParams.eventId,attendance,details:JSON.stringify(details),idToken});
+    if(!result.ok)throw Error(result.error);renderOnlineEvent_(result);
+    $("eventNotice").textContent="回答を保存しました。回答期限までは変更できます。";
+  }catch(e){$("eventError").textContent=e.message;$("eventSubmit").disabled=!(currentEventView && currentEventView.canRespond);$("eventJoin").disabled=!(currentEventView && currentEventView.canJoin);}
+  finally{onlineEventBusy=false;$("eventSubmit").disabled=!(currentEventView && currentEventView.canRespond);}
+}
+async function onlineEventJoin_() {
+  if(onlineEventBusy)return;onlineEventBusy=true;$("eventJoin").disabled=true;
+  const key="event_join_operation:"+launchParams.eventId;
+  try {
+    let operationId=sessionStorage.getItem(key);
+    if(!operationId){operationId=crypto.randomUUID();sessionStorage.setItem(key,operationId);}
+    const result=await api({action:"eventJoin",eventId:launchParams.eventId,operationId,idToken});
+    if(!result.ok)throw Error(result.error);
+    if(!/^https:\/\/([a-z0-9-]+\.)?zoom\.us\/j\/[0-9]+(?:\?|$)/i.test(String(result.zoomUrl || "")))throw Error("Zoomの参加先を確認できませんでした。");
+    $("eventZoom").href=result.zoomUrl;
+    sessionStorage.removeItem(key);
+    $("eventCompleteText").textContent=result.message;
+    show("eventComplete");
+  }catch(e){$("eventError").textContent=e.message+" 再試行する場合は、もう一度受付ボタンを押してください。";$("eventJoin").disabled=!(currentEventView && currentEventView.canJoin);}
+  finally{onlineEventBusy=false;}
+}
+$("eventSubmit").onclick=onlineEventResponse_;
+$("eventJoin").onclick=onlineEventJoin_;
+$("eventBack").onclick=async()=>{
+  $("eventBack").disabled=true;
+  try {const result=await api({action:"eventResolve",eventId:launchParams.eventId,idToken});if(!result.ok)throw Error(result.error);handleResolve(result);}
+  catch(e){$("eventCompleteText").textContent=e.message;}
+  finally{$("eventBack").disabled=false;}
+};
+
+$("eventZoom").onclick=event=>{
+  if(typeof liff.openWindow === "function" && liff.isInClient()) {
+    try {liff.openWindow({url:$("eventZoom").href,external:true});event.preventDefault();}
+    catch(_) { /* Keep the normal link available when the SDK cannot open it. */ }
+  }
+};
+
+function renderGenericEventList_(result) {
+  $("eventListMember").textContent=(result.memberName || "会員")+" 様";
+  const list=$("eventListItems");list.replaceChildren();
+  if(!result.events.length){const p=document.createElement("p");p.textContent="現在、表示できるイベントはありません。";list.appendChild(p);}
+  result.events.forEach(item=>{const card=document.createElement("article");card.className="card";const h=document.createElement("h2");h.textContent=item.title+"："+item.subject;card.appendChild(h);[item.schedule,"回答期限："+item.answerDeadline,"あなたの回答："+item.attendance,item.answerMessage].forEach(text=>{const p=document.createElement("p");p.textContent=text;card.appendChild(p);});const button=document.createElement("button");button.className="button";button.textContent=item.canRespond ? "出欠を回答・変更する" : item.canJoin ? "参加画面を開く" : "回答・参加情報を確認する";button.onclick=async()=>{button.disabled=true;try{const r=await api({action:"eventResolve",eventId:item.eventId,idToken});if(!r.ok)throw Error(r.error);handleResolve(r);}catch(e){$("eventListError").textContent=e.message;}finally{button.disabled=false;}};card.appendChild(button);list.appendChild(card);});
+  $("eventListError").textContent="";show("eventList");
+}
+function eventRadioGroup_(key,label,options,selected,disabled) {
+ const group=document.createElement("fieldset"),legend=document.createElement("legend"),choices=document.createElement("div");legend.textContent=label;group.appendChild(legend);const attendance=options.length===3&&["出席","未定","欠席"].every(v=>options.includes(v));choices.className="eventChoices"+(attendance ? " attendanceChoices" : "");
+ (attendance ? ["出席","未定","欠席"] : options).forEach(value=>{const row=document.createElement("label"),input=document.createElement("input");row.className="radioLabel";input.type="radio";input.name=key;input.value=value;input.checked=selected===value;input.disabled=disabled;row.appendChild(input);row.appendChild(document.createTextNode(value));choices.appendChild(row);});group.appendChild(choices);return group;
+}
+function renderGenericFields_(result) {
+ const area=$("eventDetails");area.replaceChildren();
+ if(result.eventType!=="assembly")area.appendChild(eventRadioGroup_("eventAttendanceChoice","参加予定を教えてください",["出席","未定","欠席"],result.attendance,!result.canRespond));
+ (result.fields || []).forEach(f=>{
+  const saved=(result.details || {})[f.key];
+  if(f.type==="select"){area.appendChild(eventRadioGroup_("eventField_"+f.key,f.label,f.options,saved,!result.canRespond));return;}
+  const label=document.createElement("label"),input=document.createElement("input");label.textContent=f.label;input.id="eventField_"+f.key;
+  if(f.type==="number"){input.type="number";input.min="0";input.max=String(f.max);input.step="1";}else{input.type="text";input.maxLength=f.max;}
+  input.value=String(saved ?? (f.type==="number" ? 0 : ""));input.disabled=!result.canRespond;label.appendChild(input);area.appendChild(label);
+ });
+}
+function readGenericFields_() {
+ const data={};(currentEventView && currentEventView.fields || []).forEach(f=>{
+  if(f.type==="select"){const selected=document.querySelector('input[name="eventField_'+f.key+'"]:checked');if(!selected)throw Error(f.label+"を選択してください。");data[f.key]=selected.value;}
+  else data[f.key]=$("eventField_"+f.key).value;
+ });return data;
+}
+$("eventToList").onclick=async()=>{const button=$("eventToList");button.disabled=true;try{const r=await api({action:"eventList",idToken});if(!r.ok)throw Error(r.error);launchParams.eventId="";handleResolve(r);}catch(e){$("eventError").textContent=e.message;}finally{button.disabled=false;}};

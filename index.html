@@ -1,10 +1,26 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20261003-inquiry-v2"><script src="friendship.js?v=20261007"></script></head>
+<title>宗心会ポータル</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link rel="stylesheet" href="portal.css?v=20261013-event-production"><script src="friendship.js?v=20261007"></script></head>
 <body><main>
   <header><b>宗心会</b><span id="portalSubtitle">会員ポータル</span></header>
   <section id="loading" class="card"><div class="spinner"></div><p>LINEで本人確認しています</p></section>
   <section id="message" class="card hidden"><h1 id="messageTitle"></h1><p id="messageText"></p><a id="messageLink" class="button hidden"></a></section>
+  <section id="eventList" class="hidden"><h1>イベントを選んでください</h1><p id="eventListMember"></p><div id="eventListItems"></div><p id="eventListError" class="error" role="alert"></p></section>
+  <section id="event" class="card hidden">
+    <p class="statusEyebrow">イベント出欠・参加</p><h1 id="eventTitle"></h1>
+    <h2 id="eventSubject"></h2><p id="eventSchedule"></p><p id="eventDeadline"></p><p id="eventWalkin"></p>
+    <p id="eventMember"></p><p id="eventAttendance"></p>
+    <div id="eventDetails"></div><p id="eventAnswerState" role="status"></p><button id="eventSubmit" class="button" type="button">回答を送信</button>
+    <p id="eventNotice" role="status"></p><hr><p id="eventCheckin"></p>
+    <p id="eventJoinState" role="status"></p>
+    <button id="eventJoin" class="button">参加受付をする</button>
+    <p id="eventZoomHint" class="hint">受付が完了すると、会議室へ進めます。</p>
+    <p id="eventError" class="error" role="alert"></p><button id="eventToList" class="button secondaryButton">イベント一覧へ戻る</button>
+  </section>
+  <section id="eventComplete" class="card hidden">
+    <div class="statusIcon" aria-hidden="true">✓</div><h1>受付が完了しました</h1>
+    <p id="eventCompleteText" role="status"></p><a id="eventZoom" class="button" target="_blank" rel="noopener noreferrer">Zoomを開く</a><p class="hint">Zoomアプリの起動を求められた場合は、画面の案内に従ってください。</p><button id="eventBack" class="button secondaryButton">イベント画面に戻る</button>
+  </section>
   <section id="registered" class="card statusCard hidden">
     <div class="statusIcon" aria-hidden="true">✓</div>
     <p class="statusEyebrow">LINE連携</p>
@@ -110,4 +126,4 @@
       </div>
     </div>
   </div>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261012-entry-note"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261013-event-production"></script></body></html>
