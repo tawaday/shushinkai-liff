@@ -671,23 +671,27 @@ function renderOnlineEvent_(result) {
   $("eventTitle").textContent=result.title;
   $("eventSchedule").textContent=result.schedule;
   $("eventMember").textContent=(result.memberName || "会員")+" 様";
-  $("eventAttendance").textContent="現在の出欠："+result.attendance;
+  $("eventAttendance").textContent=(result.eventType==="assembly" ? "参加予定（各項目から集計）：" : "現在の出欠：")+result.attendance;
   $("eventCheckin").textContent=result.checkedIn ? "受付済（参加操作 "+result.joinCount+"回） 初回："+(result.firstJoinAt || "") : "当日受付：未受付";
   $("eventJoin").disabled=!result.canJoin;
   $("eventJoin").textContent=result.checkedIn ? "もう一度会議室へ進む" : "受付して会議室へ進む";
-  document.querySelectorAll("[data-attendance]").forEach(button=>{button.disabled=!result.canRespond;});
+  $("eventSubmit").disabled=!result.canRespond;
   $("eventError").textContent="";show("event");
 }
-async function onlineEventResponse_(attendance) {
+async function onlineEventResponse_() {
   if(onlineEventBusy)return;onlineEventBusy=true;
-  document.querySelectorAll("[data-attendance]").forEach(button=>{button.disabled=true;});
+  $("eventSubmit").disabled=true;
   $("eventJoin").disabled=true;
   try {
-    const result=await api({action:"eventRespond",eventId:launchParams.eventId,attendance,details:JSON.stringify(readGenericFields_()),idToken});
+    const details=readGenericFields_();
+    const chosen=document.querySelector('input[name="eventAttendanceChoice"]:checked');
+    if(currentEventView.eventType!=="assembly"&&!chosen)throw Error("出欠を選択してください。");
+    const attendance=chosen ? chosen.value : "";
+    const result=await api({action:"eventRespond",eventId:launchParams.eventId,attendance,details:JSON.stringify(details),idToken});
     if(!result.ok)throw Error(result.error);renderOnlineEvent_(result);
-    $("eventNotice").textContent="出欠を「"+attendance+"」で保存しました。";
-  }catch(e){$("eventError").textContent=e.message;document.querySelectorAll("[data-attendance]").forEach(button=>{button.disabled=!(currentEventView && currentEventView.canRespond);});$("eventJoin").disabled=!(currentEventView && currentEventView.canJoin);}
-  finally{onlineEventBusy=false;}
+    $("eventNotice").textContent="回答を保存しました。回答期限までは変更できます。";
+  }catch(e){$("eventError").textContent=e.message;$("eventSubmit").disabled=!(currentEventView && currentEventView.canRespond);$("eventJoin").disabled=!(currentEventView && currentEventView.canJoin);}
+  finally{onlineEventBusy=false;$("eventSubmit").disabled=!(currentEventView && currentEventView.canRespond);}
 }
 async function onlineEventJoin_() {
   if(onlineEventBusy)return;onlineEventBusy=true;$("eventJoin").disabled=true;
@@ -705,7 +709,7 @@ async function onlineEventJoin_() {
   }catch(e){$("eventError").textContent=e.message+" 再試行する場合は、もう一度受付ボタンを押してください。";$("eventJoin").disabled=!(currentEventView && currentEventView.canJoin);}
   finally{onlineEventBusy=false;}
 }
-document.querySelectorAll("[data-attendance]").forEach(button=>{button.onclick=()=>onlineEventResponse_(button.dataset.attendance);});
+$("eventSubmit").onclick=onlineEventResponse_;
 $("eventJoin").onclick=onlineEventJoin_;
 $("eventBack").onclick=async()=>{
   $("eventBack").disabled=true;
@@ -760,9 +764,25 @@ function renderGenericEventList_(result) {
   result.events.forEach(item=>{const card=document.createElement("article");card.className="card";const h=document.createElement("h2");h.textContent=item.title+"："+item.subject;card.appendChild(h);[item.schedule,"回答期限："+item.answerDeadline,"あなたの回答："+item.attendance,item.answerMessage].forEach(text=>{const p=document.createElement("p");p.textContent=text;card.appendChild(p);});const button=document.createElement("button");button.className="button";button.textContent=item.canRespond ? "出欠を回答・変更する" : item.canJoin ? "参加画面を開く" : "回答・参加情報を確認する";button.onclick=async()=>{button.disabled=true;try{const r=await api({action:"eventResolve",eventId:item.eventId,idToken});if(!r.ok)throw Error(r.error);handleResolve(r);}catch(e){$("eventListError").textContent=e.message;}finally{button.disabled=false;}};card.appendChild(button);list.appendChild(card);});
   $("eventListError").textContent="";show("eventList");
 }
+function eventRadioGroup_(key,label,options,selected,disabled) {
+ const group=document.createElement("fieldset"),legend=document.createElement("legend"),choices=document.createElement("div");legend.textContent=label;group.appendChild(legend);choices.className="eventChoices";
+ options.forEach(value=>{const row=document.createElement("label"),input=document.createElement("input");row.className="radioLabel";input.type="radio";input.name=key;input.value=value;input.checked=selected===value;input.disabled=disabled;row.appendChild(input);row.appendChild(document.createTextNode(value));choices.appendChild(row);});group.appendChild(choices);return group;
+}
 function renderGenericFields_(result) {
  const area=$("eventDetails");area.replaceChildren();
- (result.fields || []).forEach(f=>{const label=document.createElement("label");label.textContent=f.label;const input=document.createElement(f.type==="select" ? "select" : "input");input.id="eventField_"+f.key;if(f.type==="select")f.options.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;input.appendChild(o);});else if(f.type==="number"){input.type="number";input.min="0";input.max=String(f.max);input.step="1";}else{input.type="text";input.maxLength=f.max;}input.value=String((result.details || {})[f.key] ?? (f.type==="select" ? f.options[0] : f.type==="number" ? 0 : ""));input.disabled=!result.canRespond;label.appendChild(input);area.appendChild(label);});
+ if(result.eventType!=="assembly")area.appendChild(eventRadioGroup_("eventAttendanceChoice","参加予定を教えてください",["出席","未定","欠席"],result.attendance,!result.canRespond));
+ (result.fields || []).forEach(f=>{
+  const saved=(result.details || {})[f.key];
+  if(f.type==="select"){area.appendChild(eventRadioGroup_("eventField_"+f.key,f.label,f.options,saved,!result.canRespond));return;}
+  const label=document.createElement("label"),input=document.createElement("input");label.textContent=f.label;input.id="eventField_"+f.key;
+  if(f.type==="number"){input.type="number";input.min="0";input.max=String(f.max);input.step="1";}else{input.type="text";input.maxLength=f.max;}
+  input.value=String(saved ?? (f.type==="number" ? 0 : ""));input.disabled=!result.canRespond;label.appendChild(input);area.appendChild(label);
+ });
 }
-function readGenericFields_() {const data={};(currentEventView && currentEventView.fields || []).forEach(f=>{data[f.key]=$("eventField_"+f.key).value;});return data;}
+function readGenericFields_() {
+ const data={};(currentEventView && currentEventView.fields || []).forEach(f=>{
+  if(f.type==="select"){const selected=document.querySelector('input[name="eventField_'+f.key+'"]:checked');if(!selected)throw Error(f.label+"を選択してください。");data[f.key]=selected.value;}
+  else data[f.key]=$("eventField_"+f.key).value;
+ });return data;
+}
 $("eventToList").onclick=async()=>{const button=$("eventToList");button.disabled=true;try{const r=await api({action:"eventList",idToken});if(!r.ok)throw Error(r.error);launchParams.eventId="";handleResolve(r);}catch(e){$("eventError").textContent=e.message;}finally{button.disabled=false;}};
