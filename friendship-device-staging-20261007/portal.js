@@ -659,6 +659,7 @@ $("faqCategoryForm").onsubmit=async event=>{
 let onlineEventBusy = false;
 let currentEventView = null;
 function renderOnlineEvent_(result) {
+  $("eventNotice").textContent="";
   currentEventView=result;launchParams.eventId=result.eventId || launchParams.eventId;
   $("eventSubject").textContent=result.subject || "";
   $("eventDeadline").textContent="出欠回答期限："+(result.answerDeadline || "");
