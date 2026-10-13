@@ -55,6 +55,7 @@ const portalSubtitles = new Map([
   ["payment", "会計一覧"],
   ["reception", "QR受付"],
   ["reminder", "リマインド管理"],
+  ["event-settings", "イベント設定"],
   ["election-admin", "選挙管理"],
   ["vote", "電子投票"],
   ["event", "イベント出欠・参加"]
@@ -680,9 +681,14 @@ function renderOnlineEvent_(result) {
   $("eventAnswerState").textContent=result.answerMessage || "";
   $("eventJoinState").textContent=result.joinMessage || "";
   $("eventWalkin").textContent=result.eventType==="online" ? "飛び入り参加："+(result.walkinAllowed ? "可能" : "不可（出席回答者のみ）") : "";
-  $("eventJoin").classList.toggle("hidden",result.eventType==="assembly");
-  $("eventZoomHint").classList.toggle("hidden",result.eventType==="assembly");
+  $("eventJoin").classList.toggle("hidden",result.eventType!=="online");
+  $("eventZoomHint").classList.toggle("hidden",result.eventType!=="online");
   renderGenericFields_(result);
+  $("eventFormMessage").textContent=result.formMessage||"";
+  $("eventLodgingMessage").textContent=result.lodgingMessage||"";
+  $("eventMaterials").classList.toggle("hidden",!result.materialsUrl);
+  $("eventMaterials").href=result.materialsUrl||"";
+  $("eventMaterialsMessage").textContent=result.materialsMessage||"";
   $("eventTitle").textContent=result.title;
   $("eventSchedule").textContent=result.schedule;
   $("eventMember").textContent=(result.memberName || "会員")+" 様";
