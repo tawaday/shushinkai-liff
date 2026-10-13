@@ -19,16 +19,17 @@
       <p id="eventReminderResult" role="status"></p><p class="hint">stagingではLINE送信・自動配信は行いません。未連携の方は下書きの宛先から除外します。実際の配信可否は友だち状態などの確認が必要です。</p>
     </div><p id="eventAdminError" class="error" role="alert"></p>
   </section>
+  <section id="eventList" class="hidden"><h1>イベントを選んでください</h1><p id="eventListMember"></p><div id="eventListItems"></div><p id="eventListError" class="error" role="alert"></p></section>
   <section id="event" class="card hidden">
     <p class="statusEyebrow">オンライン新年会</p><h1 id="eventTitle"></h1>
-    <p id="eventSchedule"></p><p>出入り自由で、新年のご挨拶と歓談を予定しています。</p>
+    <h2 id="eventSubject"></h2><p id="eventSchedule"></p><p id="eventDeadline"></p><p id="eventWalkin"></p>
     <p id="eventMember"></p><p id="eventAttendance"></p>
-    <div class="adminActions"><button class="button" data-attendance="出席">出席</button><button class="button secondaryButton" data-attendance="未定">未定</button><button class="button secondaryButton" data-attendance="欠席">欠席</button></div>
+    <div id="eventDetails"></div><p id="eventAnswerState" role="status"></p><div class="adminActions"><button class="button" data-attendance="出席">出席</button><button class="button secondaryButton" data-attendance="未定">未定</button><button class="button secondaryButton" data-attendance="欠席">欠席</button></div>
     <p id="eventNotice" role="status"></p><hr><p id="eventCheckin"></p>
-    <p>事前に回答していなくても、欠席と回答していても参加できます。</p>
+    <p id="eventJoinState" role="status"></p>
     <button id="eventJoin" class="button">参加受付をする</button>
     <p class="hint">検証用：受付が完了すると、テスト用Zoom会議を開けます。</p>
-    <p id="eventError" class="error" role="alert"></p>
+    <p id="eventError" class="error" role="alert"></p><button id="eventToList" class="button secondaryButton">イベント一覧へ戻る</button>
   </section>
   <section id="eventComplete" class="card hidden">
     <div class="statusIcon" aria-hidden="true">✓</div><h1>受付が完了しました</h1>
@@ -139,4 +140,4 @@
       </div>
     </div>
   </div>
-</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261013-event-message-fix"></script></body></html>
+</main><script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script><script src="portal.js?v=20261013-event-select"></script></body></html>
