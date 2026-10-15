@@ -33,6 +33,7 @@ const launchParams = (() => {
   }
   return {
     eventId: params.get("event") || nested.get("event") || saved.eventId || "",
+    deliveryTab: params.get("deliveryTab") || nested.get("deliveryTab") || saved.deliveryTab || "reminder",
     view: params.get("view") || nested.get("view") || saved.view || "home",
     preview: (params.get("preview") || nested.get("preview") || saved.preview || "") === "1" ? "1" : "",
     election: params.get("election") || nested.get("election") || saved.election || "friendship_staging_1",
@@ -56,6 +57,7 @@ const portalSubtitles = new Map([
   ["reception", "QR受付"],
   ["reminder", "リマインド管理"],
   ["election-admin", "選挙管理"],
+  ["delivery", "配信管理"],
   ["vote", "電子投票"],
   ["event", "イベント出欠・参加"],
   ["event-admin", "新年会の運営"]
@@ -153,6 +155,7 @@ function handleResolve(result) {
     renderRegistered(result);
     return;
   }
+  if (result.view === "delivery") { openDelivery_(); return; }
   if (result.view === "eventList") {renderGenericEventList_(result);return;}
   if (result.view === "eventAdmin") { renderEventAdmin_(result); return; }
   if (result.view === "event") { renderOnlineEvent_(result); return; }
@@ -211,16 +214,17 @@ function renderRegistered(result) {
 }
 
 async function completeRegistration_(result) {
-  if (!["card","profile","event","event-admin"].includes(launchParams.view)) {renderRegistered(result);return;}
+  if (!["card","profile","event","event-admin","delivery"].includes(launchParams.view)) {renderRegistered(result);return;}
   show("loading");
   try {
     if(isIdTokenExpired_()){restartLineLogin_();return;}
     const action=launchParams.view==="event" ? (launchParams.eventId ? "eventResolve" : "eventList") : launchParams.view==="event-admin" ? "eventAdmin" : "resolve";
     const destination=await api({action,view:launchParams.view,id:launchParams.id,eventId:launchParams.eventId,idToken});
     if(!destination.ok&&/(?:IdToken\s+expired|token.*expired|期限切れ)/i.test(String(destination.error||""))){restartLineLogin_();return;}
+    const deliveryDestination=launchParams.view==="delivery"&&destination.view==="delivery";
     const eventDestination=(launchParams.view==="event"&&["event","eventList"].includes(destination.view))||(launchParams.view==="event-admin"&&destination.view==="eventAdmin");
-    if(!destination.ok||destination.notLinked||destination.registered!==true||!(destination.redirectUrl||eventDestination)||["register","alreadyRegistered"].includes(destination.view))throw Error(destination.error||"連携後の行き先を確認できませんでした。");
-    if(eventDestination){handleResolve(destination);return;}
+    if(!destination.ok||destination.notLinked||destination.registered!==true||!(destination.redirectUrl||eventDestination||deliveryDestination)||["register","alreadyRegistered"].includes(destination.view))throw Error(destination.error||"連携後の行き先を確認できませんでした。");
+    if(eventDestination||deliveryDestination){handleResolve(destination);return;}
     renderRegistered(result);ShushinkaiFriendship.offerContinuation(()=>handleResolve(destination));
   }catch(error){message("LINE連携は完了しました","元の画面を開けませんでした。同じリンクをもう一度開いてください。\n"+error.message);}
 }
@@ -787,3 +791,17 @@ function readGenericFields_() {
  });return data;
 }
 $("eventToList").onclick=async()=>{const button=$("eventToList");button.disabled=true;try{const r=await api({action:"eventList",idToken});if(!r.ok)throw Error(r.error);launchParams.eventId="";handleResolve(r);}catch(e){$("eventError").textContent=e.message;}finally{button.disabled=false;}};
+
+// Authentication remains in this common gate. Child never receives a token in its URL.
+function openDelivery_(){
+ show('loading');
+ const frame=document.createElement('iframe');frame.title='配信管理 STAGING';
+ const url=new URL('delivery.html',location.href);url.search='';url.searchParams.set('embedded','1');url.searchParams.set('event',launchParams.id||'');url.searchParams.set('tab',launchParams.deliveryTab||'reminder');
+ const origin=url.origin;
+ window.addEventListener('message',function deliver(e){
+  if(e.origin!==origin||e.source!==frame.contentWindow||e.data?.type!=='delivery-ready')return;
+  frame.contentWindow.postMessage({type:'delivery-auth',idToken},origin);
+ });
+ frame.src=url.href;frame.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;background:#f4f6f7;z-index:1000';
+ document.body.append(frame);
+}
