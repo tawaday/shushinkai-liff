@@ -32,6 +32,7 @@ const launchParams = (() => {
     try { saved = JSON.parse(sessionStorage.getItem("shushinkai_liff_launch_params") || "{}"); } catch (_) {}
   }
   return {
+    next: params.get("next") || nested.get("next") || saved.next || "",
     eventId: params.get("event") || nested.get("event") || saved.eventId || "",
     view: params.get("view") || nested.get("view") || saved.view || "home",
     preview: (params.get("preview") || nested.get("preview") || saved.preview || "") === "1" ? "1" : "",
@@ -60,12 +61,29 @@ const portalSubtitles = new Map([
   ["vote", "電子投票"],
   ["event", "イベント出欠・参加"]
 ]);
-$("portalSubtitle").textContent = portalSubtitles.get(launchParams.view) || "会員ポータル";
+// 配備時に検証済みの専用LIFF IDだけを設定する。空欄では遷移を停止。
+const NEWYEAR_LIFF_ID = "";
+function isNewyearRegistration_() {
+  return launchParams.view === "register" && launchParams.next === "newyear2027";
+}
+function newyearDestination_() {
+  if (!/^2010887632-[A-Za-z0-9]+$/.test(NEWYEAR_LIFF_ID) || NEWYEAR_LIFF_ID === PORTAL.LIFF_ID) {
+    throw Error("新年会の回答画面は準備中です。");
+  }
+  return "https://liff.line.me/" + NEWYEAR_LIFF_ID + "?view=event&event=newyear_2027";
+}
+function continueToNewyear_() {
+  location.replace(newyearDestination_());
+}
+$("portalSubtitle").textContent = isNewyearRegistration_()
+  ? "2027年 新年会の参加・欠席回答"
+  : portalSubtitles.get(launchParams.view) || "会員ポータル";
 
 document.addEventListener("DOMContentLoaded", start);
 
 async function start() {
   try {
+    if (isNewyearRegistration_()) newyearDestination_();
     if (launchParams.view === "news" && launchParams.id && launchParams.newsToken) {
       const result = await api({
         action:"resolve", view:"news", id:launchParams.id, newsToken:launchParams.newsToken
@@ -125,6 +143,7 @@ function restartLineLogin_() {
 function saveLaunchParamsForLogin_() {
   sessionStorage.setItem("shushinkai_liff_launch_params", JSON.stringify({
     view:launchParams.view,
+    next:launchParams.next,
     eventId:launchParams.eventId,
     preview:launchParams.preview,
     election:launchParams.election,
@@ -146,6 +165,7 @@ function handleResolve(result) {
     return;
   }
   if (result.view === "alreadyRegistered") {
+    if (isNewyearRegistration_()) { continueToNewyear_(); return; }
     renderRegistered(result);
     return;
   }
@@ -207,6 +227,11 @@ function renderRegistered(result, justRegistered = false) {
 }
 
 async function completeRegistration_(result, justRegistered = false) {
+  if (isNewyearRegistration_()) {
+    renderRegistered(result, justRegistered);
+    continueToNewyear_();
+    return;
+  }
   if (launchParams.view === "event") {
     const r=await api({action:launchParams.eventId?"eventResolve":"eventList",eventId:launchParams.eventId,idToken});
     if(r.ok&&r.registered)handleResolve(r);else message("LINE連携は完了しました",r.error||"同じリンクを開き直してください。");return;
