@@ -271,7 +271,7 @@ $("lookupButton").onclick = async () => {
       return;
     }
     confirmationToken = result.confirmationToken;
-    $("confirmText").textContent = `${result.member.name} 様（部内期数 ${result.member.clubTerm}）\nこの内容でLINE連携します。`;
+    $("confirmText").textContent = `${result.member.name} 様（部内期数 ${result.member.clubTerm}期）\nこの内容でLINE連携します。`;
     show("confirm");
   } catch (error) {
     $("registerError").textContent = error.message;
