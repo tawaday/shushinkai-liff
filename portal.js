@@ -198,20 +198,21 @@ function showRegistration(fallbackUrl) {
   show("register");
 }
 
-function renderRegistered(result) {
+function renderRegistered(result, justRegistered = false) {
+  $("registeredTitle").textContent = justRegistered ? "登録が完了しました" : "すでに登録済みです";
   $("registeredMemberId").textContent = result.memberId || "（記録なし）";
   $("registeredMemberName").textContent = result.memberName || "（記録なし）";
   $("registeredAt").textContent = result.registeredAt || "（記録なし）";
   show("registered");
 }
 
-async function completeRegistration_(result) {
+async function completeRegistration_(result, justRegistered = false) {
   if (launchParams.view === "event") {
     const r=await api({action:launchParams.eventId?"eventResolve":"eventList",eventId:launchParams.eventId,idToken});
     if(r.ok&&r.registered)handleResolve(r);else message("LINE連携は完了しました",r.error||"同じリンクを開き直してください。");return;
   }
   if (!["card", "profile", "vote"].includes(launchParams.view)) {
-    renderRegistered(result);
+    renderRegistered(result, justRegistered);
     return;
   }
   show("loading");
@@ -233,7 +234,7 @@ async function completeRegistration_(result) {
       handleResolve(destination);
       return;
     }
-    renderRegistered(result);
+    renderRegistered(result, justRegistered);
     ShushinkaiFriendship.offerContinuation(() => handleResolve(destination));
   } catch (error) {
     message("LINE連携は完了しました", "元の画面を開けませんでした。LINEのメニューからもう一度開いてください。\n" + error.message);
@@ -283,7 +284,7 @@ $("confirmButton").onclick = async () => {
     button.disabled = true;
     const result = await api({ action:"registrationConfirm", idToken, confirmationToken });
     if (!result.ok) throw Error(result.error);
-    await completeRegistration_(result);
+    await completeRegistration_(result, true);
   } catch (error) {
     message("登録できませんでした", error.message);
   } finally {
